@@ -15,12 +15,13 @@ const db = getFirestore(fbApp);
 const DATA_DOC = doc(db, "club", "data");
 
 const DEV_ACCOUNT = { username: "LuisBlanco62", password: "Dinosaur#2010", role: "developer", name: "Luis Blanco" };
+const GUEST_USER = { username: "__guest__", name: "Guest", role: "guest" };
 const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDfiOI_400x400.jpg";
 
 const C = {
   bg: "#0f1117", bgCard: "#1a1d27", bgInput: "#12141c", border: "#2a2d3a",
   navy: "#1a3a6b", orange: "#f97316", text: "#e2e8f0", muted: "#94a3b8",
-  green: "#22c55e", red: "#ef4444", blue: "#3b82f6",
+  green: "#22c55e", red: "#ef4444", blue: "#3b82f6", purple: "#a855f7",
 };
 
 const diffColor = { Easy: C.green, Medium: C.orange, Hard: C.red };
@@ -28,12 +29,12 @@ const diffColor = { Easy: C.green, Medium: C.orange, Hard: C.red };
 const initData = {
   users: [DEV_ACCOUNT],
   announcements: [
-    { id: 1, title: "Welcome to Bridgeland CS Club!", body: "Our first meeting is this Friday at 3:30 PM in room 214.", date: "2025-08-28", image: "" },
+    { id: 1, title: "Welcome to Bridgeland CS Club!", body: "We meet every Monday and Thursday from 2:40–3:50 PM. Come join us!", date: "2025-08-28", image: "" },
     { id: 2, title: "UIL Competition Signups Open", body: "Sign up for UIL CS competition. Practice sessions start next week.", date: "2025-09-02", image: "" },
   ],
   events: [
-    { id: 1, title: "Weekly Meeting", date: "2025-09-06", time: "3:30 PM", location: "Room 214", desc: "Regular weekly meeting. Bring your laptops!", image: "" },
-    { id: 2, title: "Hackathon Prep", date: "2025-09-13", time: "3:30 PM", location: "Room 214", desc: "Prepare for upcoming hackathon season.", image: "" },
+    { id: 1, title: "Weekly Meeting", date: "2025-09-06", time: "2:40 PM", location: "Room 214", desc: "Regular weekly meeting. Bring your laptops!", image: "" },
+    { id: 2, title: "Hackathon Prep", date: "2025-09-13", time: "2:40 PM", location: "Room 214", desc: "Prepare for upcoming hackathon season.", image: "" },
   ],
   resources: [
     { id: 1, title: "Meeting Notes — Aug 28", url: "https://docs.google.com", type: "meeting", image: "" },
@@ -51,9 +52,11 @@ const initData = {
   completions: {},
   attempts: {},
   streaks: {},
+  officerTasks: [],
+  officerEvents: [],
   about: {
     heading: "About Bridgeland CS Club",
-    body: "We are a community of students passionate about computer science, coding, and technology. Whether you're a beginner or an experienced programmer, there's a place for you here!\n\nWe meet every week to learn new concepts, practice for UIL competitions, work on projects, and have fun. Join us and be part of something great.",
+    body: "We are a community of students passionate about computer science, coding, and technology. Whether you're a beginner or an experienced programmer, there's a place for you here!\n\nWe meet every Monday and Thursday from 2:40–3:50 PM to learn new concepts, practice for UIL competitions, work on projects, and have fun. Join us and be part of something great.",
     images: [],
     officers: [{ name: "President", role: "President", image: "" }, { name: "Vice President", role: "Officer", image: "" }],
   },
@@ -93,9 +96,12 @@ function Header({ user, onSignOut, onManage, isDev }) {
         <span style={{ fontFamily: "'Georgia', serif", fontWeight: 400, fontSize: 20, color: "#fff", letterSpacing: 1 }}>Bridgeland CS Club</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {user && <><span style={{ fontSize: 13, color: "#cdd5e0" }}>{user.name || user.username}</span>
-          {user.role !== "member" && <Tag c={user.role === "developer" ? C.orange : C.blue}>{user.role}</Tag>}
-          {isDev && <Btn color={C.orange} onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</Btn>}</>}
+        {user && <>
+          <span style={{ fontSize: 13, color: "#cdd5e0" }}>{user.name || user.username}</span>
+          {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.blue : C.purple}>{user.role}</Tag>}
+          {user.role === "guest" && <Tag c={C.purple}>guest</Tag>}
+          {isDev && <Btn color={C.orange} onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</Btn>}
+        </>}
         <OutBtn onClick={onSignOut} style={{ borderColor: "#ffffff33", color: "#cdd5e0" }}>{user ? "Sign out" : ""}</OutBtn>
       </div>
     </div>
@@ -128,7 +134,8 @@ export default function App() {
   const upd = fn => setData(prev => { const next = fn(prev); saveData(next); return next; });
   const isOfficer = user && (user.role === "officer" || user.role === "developer");
   const isDev = user && user.role === "developer";
-  const myCompleted = user ? (data.completions[user.username] || []) : [];
+  const isGuest = user && user.role === "guest";
+  const myCompleted = user && !isGuest ? (data.completions[user.username] || []) : [];
 
   const login = () => {
     if (loginForm.username === DEV_ACCOUNT.username && loginForm.password === DEV_ACCOUNT.password) { setUser(DEV_ACCOUNT); setLoginErr(""); return; }
@@ -143,8 +150,10 @@ export default function App() {
     setUser(nu); setRegErr("");
   };
 
-  const navItems = ["home", "about", "announcements", "events", "resources", "problems", "leaderboard"];
-  const navLabels = { home: "Home", about: "About Us", announcements: "Announcements", events: "Events", resources: "Resources", problems: "Problems", leaderboard: "Leaderboard" };
+  const allNavItems = ["home", "about", "announcements", "events", "resources", "problems", "leaderboard"];
+  const officerNavItems = [...allNavItems, "officers"];
+  const navItems = isOfficer ? officerNavItems : allNavItems;
+  const navLabels = { home: "Home", about: "About Us", announcements: "Announcements", events: "Events", resources: "Resources", problems: "Problems", leaderboard: "Leaderboard", officers: "Officers" };
   const navBtn = active => ({ background: active ? `${C.orange}28` : "transparent", color: active ? C.orange : C.muted, border: "none", padding: "8px 14px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 400, whiteSpace: "nowrap" });
 
   if (loading) return (
@@ -171,7 +180,14 @@ export default function App() {
             <input style={{ ...inp, marginBottom: 16 }} type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" onKeyDown={e => e.key === "Enter" && login()} />
             {loginErr && <p style={{ color: C.red, fontSize: 13, margin: "0 0 12px" }}>{loginErr}</p>}
             <Btn style={{ width: "100%", padding: "10px" }} onClick={login}>Sign in</Btn>
-            <p style={{ textAlign: "center", fontSize: 13, color: C.muted, marginTop: 12 }}>No account? <span style={{ color: C.orange, cursor: "pointer" }} onClick={() => setShowReg(true)}>Register</span></p>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0" }}>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+              <span style={{ fontSize: 12, color: C.muted }}>or</span>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+            </div>
+            <Btn color={C.purple} style={{ width: "100%", padding: "10px" }} onClick={() => setUser(GUEST_USER)}>Continue as Guest</Btn>
+            <p style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>Guests can browse but cannot do problems or appear on the leaderboard.</p>
+            <p style={{ textAlign: "center", fontSize: 13, color: C.muted, marginTop: 8 }}>No account? <span style={{ color: C.orange, cursor: "pointer" }} onClick={() => setShowReg(true)}>Register</span></p>
           </div>
         ) : (
           <div style={cardS}>
@@ -212,36 +228,52 @@ export default function App() {
       </div>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "1.5rem 1rem" }}>
 
+        {/* HOME */}
         {page === "home" && (
           <div>
             <div style={{ background: `linear-gradient(135deg,${C.navy}cc,#1a1d27)`, borderRadius: 12, padding: "1.5rem", marginBottom: 24, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 20 }}>
               <img src={LOGO_URL} alt="logo" style={{ width: 60, height: 60, borderRadius: "50%", border: `3px solid ${C.orange}`, objectFit: "cover", flexShrink: 0 }} onError={e => e.target.style.display = "none"} />
               <div>
                 <h1 style={{ fontFamily: "'Georgia',serif", fontSize: 22, fontWeight: 400, margin: "0 0 4px" }}>Welcome, {user.name?.split(" ")[0] || user.username}! 👋</h1>
-                <p style={{ color: C.muted, margin: 0, fontSize: 14 }}>Bridgeland High School Computer Science Club · Cypress, TX</p>
+                <p style={{ color: C.muted, margin: "0 0 6px", fontSize: 14 }}>Bridgeland High School Computer Science Club · Cypress, TX</p>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: `${C.orange}22`, border: `1px solid ${C.orange}44`, borderRadius: 6, padding: "4px 10px" }}>
+                  <span style={{ fontSize: 13, color: C.orange, fontWeight: 600 }}>📅 Mon & Thu · 2:40 – 3:50 PM</span>
+                </div>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12, marginBottom: 24 }}>
-              {[["Members", data.users.length], ["Events", data.events.length], ["Units", data.units.length], ["Problems Solved", myCompleted.length]].map(([l, v]) => (
-                <div key={l} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10, padding: "1rem", textAlign: "center" }}>
-                  <div style={{ fontSize: 26, fontWeight: 700, color: C.orange }}>{v}</div>
-                  <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{l}</div>
-                </div>
-              ))}
-            </div>
-            <h3 style={{ fontSize: 13, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Top solvers</h3>
-            <div style={{ ...cardS, marginBottom: 24, padding: "0.75rem 1rem" }}>
-              {[...data.users].map(u => ({ name: u.name || u.username, username: u.username, count: (data.completions[u.username] || []).length }))
-                .sort((a, b) => b.count - a.count).slice(0, 3).map((u, i) => (
-                  <div key={u.username} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: i === 0 ? `${C.orange}44` : i === 1 ? `${C.blue}44` : `${C.muted}22`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: i === 0 ? C.orange : i === 1 ? C.blue : C.muted, flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{u.name}{u.username === user.username && <span style={{ fontSize: 11, color: C.orange, marginLeft: 6 }}>you</span>}</div>
-                    <div style={{ fontWeight: 700, color: C.orange }}>{u.count}</div>
-                    <div style={{ fontSize: 12, color: C.muted }}>solved</div>
+            {!isGuest && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12, marginBottom: 24 }}>
+                {[["Members", data.users.length], ["Events", data.events.length], ["Units", data.units.length], ["Problems Solved", myCompleted.length]].map(([l, v]) => (
+                  <div key={l} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 10, padding: "1rem", textAlign: "center" }}>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: C.orange }}>{v}</div>
+                    <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{l}</div>
                   </div>
                 ))}
-              {data.users.length === 0 && <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>No solvers yet.</p>}
-            </div>
+              </div>
+            )}
+            {isGuest && (
+              <div style={{ ...cardS, borderLeft: `3px solid ${C.purple}`, marginBottom: 24 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: C.purple, marginBottom: 4 }}>Browsing as Guest</div>
+                <div style={{ fontSize: 13, color: C.muted }}>Sign in or create an account to do practice problems and appear on the leaderboard.</div>
+              </div>
+            )}
+            {!isGuest && (
+              <>
+                <h3 style={{ fontSize: 13, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Top solvers</h3>
+                <div style={{ ...cardS, marginBottom: 24, padding: "0.75rem 1rem" }}>
+                  {[...data.users].map(u => ({ name: u.name || u.username, username: u.username, count: (data.completions[u.username] || []).length }))
+                    .sort((a, b) => b.count - a.count).slice(0, 3).map((u, i) => (
+                      <div key={u.username} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < 2 ? `1px solid ${C.border}` : "none" }}>
+                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: i === 0 ? `${C.orange}44` : i === 1 ? `${C.blue}44` : `${C.muted}22`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: i === 0 ? C.orange : i === 1 ? C.blue : C.muted, flexShrink: 0 }}>{i + 1}</div>
+                        <div style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{u.name}{u.username === user.username && <span style={{ fontSize: 11, color: C.orange, marginLeft: 6 }}>you</span>}</div>
+                        <div style={{ fontWeight: 700, color: C.orange }}>{u.count}</div>
+                        <div style={{ fontSize: 12, color: C.muted }}>solved</div>
+                      </div>
+                    ))}
+                  {data.users.length === 0 && <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>No solvers yet.</p>}
+                </div>
+              </>
+            )}
             <h3 style={{ fontSize: 13, color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Latest announcements</h3>
             {data.announcements.slice(-2).reverse().map(a => (
               <div key={a.id} style={{ ...cardS, borderLeft: `3px solid ${C.orange}` }}>
@@ -254,8 +286,10 @@ export default function App() {
           </div>
         )}
 
+        {/* ABOUT */}
         {page === "about" && <AboutPage data={data} upd={upd} isOfficer={isOfficer} />}
 
+        {/* ANNOUNCEMENTS */}
         {page === "announcements" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -276,6 +310,7 @@ export default function App() {
           </div>
         )}
 
+        {/* EVENTS */}
         {page === "events" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -298,6 +333,7 @@ export default function App() {
           </div>
         )}
 
+        {/* RESOURCES */}
         {page === "resources" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -325,42 +361,66 @@ export default function App() {
           </div>
         )}
 
+        {/* PROBLEMS */}
         {page === "problems" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ margin: 0 }}>Problems</h2>
               {isOfficer && <div style={{ display: "flex", gap: 8 }}><Btn color={C.blue} onClick={() => setModal("prob")}>+ New problem</Btn><Btn onClick={() => setModal("unit")}>+ New unit</Btn></div>}
             </div>
-            <div style={{ background: `${C.orange}18`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 13, color: C.orange }}>Units group problems together. Start a unit to go through them back-to-back.</div>
-            {data.units.length === 0 && <p style={{ color: C.muted }}>No units yet.</p>}
-            {data.units.map(unit => {
-              const probs = unit.problemIds.map(id => data.problems.find(p => p.id === id)).filter(Boolean);
-              const solved = probs.filter(p => myCompleted.includes(p.id)).length;
-              return (
-                <div key={unit.id} style={{ ...cardS, cursor: "pointer" }} onClick={() => setActiveUnit(unit.id)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{unit.title}</div>
-                      {unit.desc && <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>{unit.desc}</div>}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{probs.map(p => <Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
+            {isGuest ? (
+              <div style={{ ...cardS, borderLeft: `3px solid ${C.purple}`, textAlign: "center", padding: "2rem" }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+                <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Sign in to practice</div>
+                <div style={{ fontSize: 14, color: C.muted }}>Create a free account to access all practice problems, track your progress, and appear on the leaderboard.</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ background: `${C.orange}18`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 13, color: C.orange }}>Units group problems together. Start a unit to go through them back-to-back.</div>
+                {data.units.length === 0 && <p style={{ color: C.muted }}>No units yet.</p>}
+                {data.units.map(unit => {
+                  const probs = unit.problemIds.map(id => data.problems.find(p => p.id === id)).filter(Boolean);
+                  const solved = probs.filter(p => myCompleted.includes(p.id)).length;
+                  return (
+                    <div key={unit.id} style={{ ...cardS, cursor: "pointer" }} onClick={() => setActiveUnit(unit.id)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{unit.title}</div>
+                          {unit.desc && <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>{unit.desc}</div>}
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{probs.map(p => <Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
+                        </div>
+                        <div style={{ textAlign: "right", marginLeft: 16, flexShrink: 0 }}>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: C.orange }}>{solved}/{probs.length}</div>
+                          <div style={{ fontSize: 11, color: C.muted }}>solved</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                        <Btn onClick={e => { e.stopPropagation(); setActiveUnit(unit.id); }}>Start unit →</Btn>
+                        {isOfficer && <OutBtn danger onClick={e => { e.stopPropagation(); upd(d => ({ ...d, units: d.units.filter(x => x.id !== unit.id) })); }}>Remove</OutBtn>}
+                      </div>
                     </div>
-                    <div style={{ textAlign: "right", marginLeft: 16, flexShrink: 0 }}>
-                      <div style={{ fontSize: 22, fontWeight: 700, color: C.orange }}>{solved}/{probs.length}</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>solved</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                    <Btn onClick={e => { e.stopPropagation(); setActiveUnit(unit.id); }}>Start unit →</Btn>
-                    {isOfficer && <OutBtn danger onClick={e => { e.stopPropagation(); upd(d => ({ ...d, units: d.units.filter(x => x.id !== unit.id) })); }}>Remove</OutBtn>}
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 
-        {page === "leaderboard" && <LeaderboardPage data={data} user={user} />}
+        {/* LEADERBOARD */}
+        {page === "leaderboard" && (
+          isGuest ? (
+            <div style={{ ...cardS, borderLeft: `3px solid ${C.purple}`, textAlign: "center", padding: "2rem" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+              <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Sign in to view the leaderboard</div>
+              <div style={{ fontSize: 14, color: C.muted }}>Create a free account to track your rank and compete with other members.</div>
+            </div>
+          ) : <LeaderboardPage data={data} user={user} />
+        )}
 
+        {/* OFFICERS (officer/dev only) */}
+        {page === "officers" && isOfficer && <OfficersPage data={data} upd={upd} isDev={isDev} />}
+
+        {/* MEMBERS (dev only) */}
         {page === "members" && isDev && (
           <div>
             <h2>Manage Members</h2>
@@ -373,14 +433,114 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {u.role === "member" && <Btn color={C.blue} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "officer" } : x) }))}>Make officer</Btn>}
-                  {u.role === "officer" && <Btn onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "member" } : x) }))}>Demote</Btn>}
+                  {u.role === "officer" && <Btn color={C.muted} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "member" } : x) }))}>Demote</Btn>}
+                  <OutBtn danger onClick={() => upd(d => ({ ...d, users: d.users.filter(x => x.username !== u.username) }))}>Delete</OutBtn>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-      {modal && <ModalBox modal={modal} setModal={setModal} data={data} upd={upd} />}
+      {modal && <ModalBox modal={modal} setModal={setModal} data={data} upd={upd} isDev={isDev} />}
+    </div>
+  );
+}
+
+/* ---- OFFICERS PAGE ---- */
+function OfficersPage({ data, upd, isDev }) {
+  const tasks = data.officerTasks || [];
+  const events = data.officerEvents || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = [...events].filter(e => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  const past = [...events].filter(e => e.date < today).sort((a, b) => b.date.localeCompare(a.date));
+
+  const toggleTask = id => {
+    upd(d => ({ ...d, officerTasks: (d.officerTasks || []).map(t => t.id === id ? { ...t, done: !t.done } : t) }));
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ margin: 0 }}>Officer Portal</h2>
+        {isDev && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn color={C.blue} onClick={() => upd(d => {
+              const title = window.prompt("Task title:");
+              if (!title) return d;
+              return { ...d, officerTasks: [...(d.officerTasks || []), { id: Date.now(), title, done: false }] };
+            })}>+ Task</Btn>
+            <Btn onClick={() => upd(d => {
+              const title = window.prompt("Event title:");
+              if (!title) return d;
+              const date = window.prompt("Date (YYYY-MM-DD):");
+              if (!date) return d;
+              const desc = window.prompt("Description (optional):") || "";
+              return { ...d, officerEvents: [...(d.officerEvents || []), { id: Date.now(), title, date, desc }] };
+            })}>+ Event</Btn>
+          </div>
+        )}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        {/* TASKS */}
+        <div>
+          <h3 style={{ fontSize: 13, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Officer Tasks</h3>
+          {tasks.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>No tasks assigned yet.</p>}
+          {tasks.map(t => (
+            <div key={t.id} style={{ ...cardS, display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", opacity: t.done ? 0.6 : 1 }} onClick={() => toggleTask(t.id)}>
+              <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${t.done ? C.green : C.border}`, background: t.done ? C.green : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                {t.done && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.muted : C.text }}>{t.title}</div>
+              </div>
+              {isDev && <button onClick={e => { e.stopPropagation(); upd(d => ({ ...d, officerTasks: (d.officerTasks || []).filter(x => x.id !== t.id) })); }} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>}
+            </div>
+          ))}
+          {tasks.length > 0 && (
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{tasks.filter(t => t.done).length}/{tasks.length} completed</div>
+          )}
+        </div>
+
+        {/* EVENTS */}
+        <div>
+          <h3 style={{ fontSize: 13, color: C.muted, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Officer Events</h3>
+          {upcoming.length === 0 && past.length === 0 && <p style={{ color: C.muted, fontSize: 13 }}>No officer events yet.</p>}
+          {upcoming.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, color: C.green, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Upcoming</div>
+              {upcoming.map(e => (
+                <div key={e.id} style={{ ...cardS, borderLeft: `3px solid ${C.green}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{e.date}</div>
+                      {e.desc && <div style={{ fontSize: 13, color: C.text, marginTop: 4 }}>{e.desc}</div>}
+                    </div>
+                    {isDev && <button onClick={() => upd(d => ({ ...d, officerEvents: (d.officerEvents || []).filter(x => x.id !== e.id) }))} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {past.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, margin: "12px 0 8px" }}>Past</div>
+              {past.map(e => (
+                <div key={e.id} style={{ ...cardS, opacity: 0.6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{e.date}</div>
+                      {e.desc && <div style={{ fontSize: 13, marginTop: 4 }}>{e.desc}</div>}
+                    </div>
+                    {isDev && <button onClick={() => upd(d => ({ ...d, officerEvents: (d.officerEvents || []).filter(x => x.id !== e.id) }))} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -619,7 +779,7 @@ function LeaderboardPage({ data, user }) {
   );
 }
 
-function ModalBox({ modal, setModal, data, upd }) {
+function ModalBox({ modal, setModal, data, upd, isDev }) {
   const [f, setF] = useState({ type: "resource", difficulty: "Easy", choices: ["", "", "", ""], answer: 0, image: "", selectedProblemIds: [], title: "", body: "", date: "", time: "", location: "", desc: "", url: "", name: "" });
   const set = patch => setF(prev => ({ ...prev, ...patch }));
   const setChoice = (i, v) => setF(p => { const c = [...p.choices]; c[i] = v; return { ...p, choices: c }; });
@@ -641,7 +801,7 @@ function ModalBox({ modal, setModal, data, upd }) {
       <div style={box} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: "0 0 16px", fontSize: 16 }}>{titles[modal]}</h3>
         {modal === "ann" && <><label style={lbl}>Title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} onChange={e => set({ title: e.target.value })} /><label style={lbl}>Body</label><textarea style={{ ...inp, height: 80, resize: "vertical", marginBottom: 10 }} value={f.body} onChange={e => set({ body: e.target.value })} /><ImgPick preview={f.image} onPick={v => set({ image: v })} /></>}
-        {modal === "evt" && <><label style={lbl}>Title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} onChange={e => set({ title: e.target.value })} /><label style={lbl}>Date</label><input type="date" style={{ ...inp, marginBottom: 10 }} value={f.date} onChange={e => set({ date: e.target.value })} /><label style={lbl}>Time</label><input style={{ ...inp, marginBottom: 10 }} value={f.time} placeholder="e.g. 3:30 PM" onChange={e => set({ time: e.target.value })} /><label style={lbl}>Location</label><input style={{ ...inp, marginBottom: 10 }} value={f.location} onChange={e => set({ location: e.target.value })} /><label style={lbl}>Description</label><input style={{ ...inp, marginBottom: 10 }} value={f.desc} onChange={e => set({ desc: e.target.value })} /><ImgPick preview={f.image} onPick={v => set({ image: v })} /></>}
+        {modal === "evt" && <><label style={lbl}>Title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} onChange={e => set({ title: e.target.value })} /><label style={lbl}>Date</label><input type="date" style={{ ...inp, marginBottom: 10 }} value={f.date} onChange={e => set({ date: e.target.value })} /><label style={lbl}>Time</label><input style={{ ...inp, marginBottom: 10 }} value={f.time} placeholder="e.g. 2:40 PM" onChange={e => set({ time: e.target.value })} /><label style={lbl}>Location</label><input style={{ ...inp, marginBottom: 10 }} value={f.location} onChange={e => set({ location: e.target.value })} /><label style={lbl}>Description</label><input style={{ ...inp, marginBottom: 10 }} value={f.desc} onChange={e => set({ desc: e.target.value })} /><ImgPick preview={f.image} onPick={v => set({ image: v })} /></>}
         {modal === "res" && <><label style={lbl}>Title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} onChange={e => set({ title: e.target.value })} /><label style={lbl}>URL</label><input style={{ ...inp, marginBottom: 10 }} value={f.url} placeholder="https://..." onChange={e => set({ url: e.target.value })} /><label style={lbl}>Type</label><select style={{ ...inp, marginBottom: 10 }} value={f.type} onChange={e => set({ type: e.target.value })}><option value="resource">Helpful resource</option><option value="meeting">Meeting notes</option></select><ImgPick preview={f.image} onPick={v => set({ image: v })} /></>}
         {modal === "prob" && <><label style={lbl}>Problem title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} onChange={e => set({ title: e.target.value })} /><label style={lbl}>Difficulty</label><select style={{ ...inp, marginBottom: 10 }} value={f.difficulty} onChange={e => set({ difficulty: e.target.value })}><option>Easy</option><option>Medium</option><option>Hard</option></select><label style={lbl}>Question</label><textarea style={{ ...inp, height: 72, resize: "vertical", marginBottom: 14 }} value={f.desc} onChange={e => set({ desc: e.target.value })} /><label style={lbl}>Answer choices — select the correct one</label>{[0,1,2,3].map(i => (<div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><input type="radio" name="ans" checked={Number(f.answer)===i} onChange={() => set({ answer: i })} style={{ accentColor: C.orange, flexShrink: 0 }} /><div style={{ width: 24, height: 24, borderRadius: "50%", background: `${C.orange}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.orange, flexShrink: 0 }}>{String.fromCharCode(65+i)}</div><input style={inp} value={f.choices[i]} placeholder={`Choice ${String.fromCharCode(65+i)}`} onChange={e => setChoice(i, e.target.value)} /></div>))}</>}
         {modal === "unit" && <><label style={lbl}>Unit title</label><input style={{ ...inp, marginBottom: 10 }} value={f.title} placeholder="e.g. Intro to Data Structures" onChange={e => set({ title: e.target.value })} /><label style={lbl}>Description (optional)</label><input style={{ ...inp, marginBottom: 14 }} value={f.desc} placeholder="Brief description" onChange={e => set({ desc: e.target.value })} /><label style={lbl}>Select problems</label><div style={{ maxHeight: 220, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, marginBottom: 12 }}>{data.problems.length === 0 && <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>No problems yet. Create some first.</p>}{data.problems.map(p => { const sel = f.selectedProblemIds.includes(p.id); return (<div key={p.id} onClick={() => toggleProb(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: sel ? `${C.orange}18` : "transparent", border: `1px solid ${sel ? C.orange : "transparent"}`, marginBottom: 4 }}><div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? C.orange : C.border}`, background: sel ? C.orange : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{sel && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}</div><span style={{ flex: 1, fontSize: 14 }}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag></div>); })}</div>{f.selectedProblemIds.length > 0 && <p style={{ fontSize: 12, color: C.orange, margin: "0 0 4px" }}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length > 1 ? "s" : ""} selected</p>}</>}
