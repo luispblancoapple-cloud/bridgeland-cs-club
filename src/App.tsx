@@ -21,7 +21,7 @@ const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDf
 const C = {
   bg: "#0f1117", bgCard: "#1a1d27", bgInput: "#12141c", border: "#2a2d3a",
   navy: "#1a3a6b", orange: "#f97316", text: "#e2e8f0", muted: "#94a3b8",
-  green: "#22c55e", red: "#ef4444", blue: "#3b82f6", guest: "#38bdf8",
+  green: "#22c55e", red: "#ef4444", blue: "#3b82f6", guest: "#64748b",
 };
 
 const diffColor = { Easy: C.green, Medium: C.orange, Hard: C.red };
@@ -265,7 +265,7 @@ export default function App() {
               <span style={{ fontSize: 12, color: C.muted }}>or</span>
               <div style={{ flex: 1, height: 1, background: C.border }} />
             </div>
-            <Btn color={C.guest} style={{ width: "100%", padding: "10px" }} onClick={() => setUser(GUEST_USER)}>Continue as Guest</Btn>
+            <button onClick={() => setUser(GUEST_USER)} style={{ width: "100%", padding: "10px", background: C.bgInput, border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Inter','Segoe UI',sans-serif" }}>Continue as Guest</button>
             <p style={{ textAlign: "center", fontSize: 12, color: C.muted, marginTop: 8 }}>Guests can browse but cannot do problems or appear on the leaderboard.</p>
             <p style={{ textAlign: "center", fontSize: 13, color: C.muted, marginTop: 8 }}>No account? <span style={{ color: C.orange, cursor: "pointer" }} onClick={() => setShowReg(true)}>Register</span></p>
           </div>
@@ -570,8 +570,10 @@ function ResourcesPage({ data, upd, isOfficer }) {
       {folders.map(folder => (
         <div key={folder.id} style={{ marginBottom: 8 }}>
           <div onClick={() => toggleFolder(folder.id)} style={{ ...cardS, marginBottom: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: openFolders[folder.id] ? "none" : undefined, borderRadius: openFolders[folder.id] ? "10px 10px 0 0" : 10 }}>
-            <span style={{ fontSize: 16, transition: "transform 0.15s", display: "inline-block", transform: openFolders[folder.id] ? "rotate(90deg)" : "none" }}>▶</span>
-            <span style={{ fontWeight: 600, flex: 1 }}>📁 {folder.title}</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, transition: "transform 0.15s", transform: openFolders[folder.id] ? "rotate(90deg)" : "rotate(0deg)" }}>
+              <path d="M6 3.5L10.5 8L6 12.5" stroke={C.muted} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontWeight: 600, flex: 1 }}>{folder.title}</span>
             <span style={{ fontSize: 12, color: C.muted }}>{(folder.items||[]).length} link{(folder.items||[]).length !== 1 ? "s" : ""}</span>
             {isOfficer && <button onClick={e => { e.stopPropagation(); removeFolder(folder.id); }} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 16 }}>×</button>}
           </div>
@@ -880,7 +882,7 @@ function AboutPage({ data, upd, isOfficer }) {
         {!editing && contacts.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {contacts.map((c, i) => (
-              <a key={i} href={c.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: `${C.blue}22`, color: C.blue, border: `1px solid ${C.blue}44`, padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{c.label || "Link"}</a>
+              <a key={i} href={c.url} target="_blank" rel="noreferrer" style={{ display: "inline-block", background: `${C.orange}18`, color: C.orange, border: `1px solid ${C.orange}44`, padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{c.label || "Link"}</a>
             ))}
           </div>
         )}
