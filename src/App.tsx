@@ -166,6 +166,9 @@ const Btn = ({ color = C.orange, children, onClick, style = {}, disabled }) => (
 const OutBtn = ({ children, onClick, style = {}, danger }) => (
   <button onClick={onClick} style={{ background: "transparent", color: danger ? C.red : C.muted, border: `1px solid ${danger ? C.red : C.border}`, padding: "6px 12px", borderRadius: 6, cursor: "pointer", fontSize: 13, ...style }}>{children}</button>
 );
+const SecBtn = ({ children, onClick, style = {} }) => (
+  <button onClick={onClick} style={{ background: C.bgInput, color: C.text, border: `1px solid ${C.border}`, padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600, ...style }}>{children}</button>
+);
 const Tag = ({ c, children }) => <span style={{ background: `${c}22`, color: c, fontSize: 11, padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>{children}</span>;
 
 function Header({ user, onSignOut, onManage, isDev }) {
@@ -180,7 +183,7 @@ function Header({ user, onSignOut, onManage, isDev }) {
           <span style={{ fontSize: 13, color: "#cdd5e0" }}>{user.name || user.username}</span>
           {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.orange : C.guest}>{user.role}</Tag>}
           {user.role === "guest" && <Tag c={C.guest}>guest</Tag>}
-          {isDev && <Btn color={C.orange} onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</Btn>}
+          {isDev && <SecBtn onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</SecBtn>}
         </>}
         <OutBtn onClick={onSignOut} style={{ borderColor: "#ffffff33", color: "#cdd5e0" }}>{user ? "Sign out" : ""}</OutBtn>
       </div>
@@ -447,7 +450,7 @@ export default function App() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ margin: 0 }}>Problems</h2>
-              {isOfficer && <div style={{ display: "flex", gap: 8 }}><Btn color={C.orange} onClick={() => setModal("prob")}>+ New problem</Btn><Btn onClick={() => setModal("unit")}>+ New unit</Btn></div>}
+              {isOfficer && <div style={{ display: "flex", gap: 8 }}><SecBtn onClick={() => setModal("prob")}>+ New problem</SecBtn><Btn onClick={() => setModal("unit")}>+ New unit</Btn></div>}
             </div>
             {isGuest ? (
               <div style={{ ...cardS, borderLeft: `3px solid ${C.guest}`, textAlign: "center", padding: "2rem" }}>
@@ -478,7 +481,7 @@ export default function App() {
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
                         <Btn onClick={e => { e.stopPropagation(); setActiveUnit(unit.id); }}>Start unit →</Btn>
                         {isOfficer && <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
-                          <Btn color={C.orange} onClick={() => setModal({ type: "editUnit", unit })}>Edit problems</Btn>
+                          <SecBtn onClick={() => setModal({ type: "editUnit", unit })}>Edit problems</SecBtn>
                           <OutBtn danger onClick={() => upd(d => ({ ...d, units: d.units.filter(x => x.id !== unit.id) }))}>Remove</OutBtn>
                         </div>}
                       </div>
@@ -516,7 +519,7 @@ export default function App() {
                   <Tag c={u.role === "officer" ? C.orange : C.muted}>{u.role}</Tag>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {u.role === "member" && <Btn color={C.orange} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "officer" } : x) }))}>Make officer</Btn>}
+                  {u.role === "member" && <SecBtn onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "officer" } : x) }))}>Make officer</SecBtn>}
                   {u.role === "officer" && <Btn color={C.muted} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "member" } : x) }))}>Demote</Btn>}
                   <OutBtn danger onClick={() => upd(d => ({ ...d, users: d.users.filter(x => x.username !== u.username) }))}>Delete</OutBtn>
                 </div>
@@ -557,7 +560,7 @@ function ResourcesPage({ data, upd, isOfficer }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>Resources</h2>
-        {isOfficer && <Btn color={C.orange} onClick={() => setShowNewFolder(true)}>+ New folder</Btn>}
+        {isOfficer && <SecBtn onClick={() => setShowNewFolder(true)}>+ New folder</SecBtn>}
       </div>
       {showNewFolder && (
         <div style={{ ...cardS, display: "flex", gap: 8, alignItems: "center" }}>
@@ -648,8 +651,8 @@ function OfficersPage({ data, upd, isDev }) {
         <h2 style={{ margin: 0 }}>Officer Portal</h2>
         {isDev && (
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn color={C.orange} onClick={() => setShowTaskModal(true)}>+ Task</Btn>
-            <Btn onClick={() => setShowEventModal(true)}>+ Event</Btn>
+            <SecBtn onClick={() => setShowTaskModal(true)}>+ Task</SecBtn>
+            <SecBtn onClick={() => setShowEventModal(true)}>+ Event</SecBtn>
           </div>
         )}
       </div>
@@ -828,7 +831,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Photos</h3>
-          {editing && <><Btn color={C.orange} onClick={() => ref.current.click()} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add photo</Btn><input ref={ref} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) addImg(e.target.files[0]); }} /></>}
+          {editing && <><SecBtn onClick={() => ref.current.click()} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add photo</SecBtn><input ref={ref} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) addImg(e.target.files[0]); }} /></>}
         </div>
         {(about.images||[]).length === 0 && !editing && <p style={{ color: C.muted, fontSize: 13 }}>No photos yet.</p>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
@@ -845,7 +848,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Officers</h3>
-          {editing && <Btn color={C.orange} onClick={() => setDraft(d => ({ ...d, officers: [...(d.officers||[]), { name: "", role: "Officer", image: "" }] }))} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add officer</Btn>}
+          {editing && <SecBtn onClick={() => setDraft(d => ({ ...d, officers: [...(d.officers||[]), { name: "", role: "Officer", image: "" }] }))} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add officer</SecBtn>}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 10 }}>
           {(about.officers||[]).map((o, i) => (
@@ -876,7 +879,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Contact</h3>
-          {editing && <Btn color={C.orange} onClick={addContact} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add button</Btn>}
+          {editing && <SecBtn onClick={addContact} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add button</SecBtn>}
         </div>
         {contacts.length === 0 && !editing && <p style={{ color: C.muted, fontSize: 13 }}>No contact links yet.</p>}
         {!editing && contacts.length > 0 && (
