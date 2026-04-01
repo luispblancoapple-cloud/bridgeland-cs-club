@@ -178,7 +178,7 @@ function Header({ user, onSignOut, onManage, isDev }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {user && <>
           <span style={{ fontSize: 13, color: "#cdd5e0" }}>{user.name || user.username}</span>
-          {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.blue : C.guest}>{user.role}</Tag>}
+          {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.orange : C.guest}>{user.role}</Tag>}
           {user.role === "guest" && <Tag c={C.guest}>guest</Tag>}
           {isDev && <Btn color={C.orange} onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</Btn>}
         </>}
@@ -400,8 +400,8 @@ export default function App() {
             {data.googleCalendarId && (
               <div style={{ marginBottom: 24, borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}` }}>
                 <iframe
-                  src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(data.googleCalendarId)}&ctz=America%2FChicago&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=AGENDA&bgcolor=%230f1117&color=%23f97316`}
-                  style={{ width: "100%", height: 400, border: 0, display: "block" }}
+                  src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(data.googleCalendarId)}&ctz=America%2FChicago&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=MONTH&bgcolor=%230f1117&color=%23f97316`}
+                  style={{ width: "100%", height: 600, border: 0, display: "block" }}
                   frameBorder="0"
                   scrolling="no"
                   title="Google Calendar"
@@ -409,12 +409,12 @@ export default function App() {
               </div>
             )}
             {!data.googleCalendarId && isDev && (
-              <div style={{ ...cardS, marginBottom: 16, borderLeft: `3px solid ${C.blue}` }}>
+              <div style={{ ...cardS, marginBottom: 16, borderLeft: `3px solid ${C.orange}` }}>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Add Google Calendar</div>
                 <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>Paste your Google Calendar ID to embed it here. Found in Calendar Settings → Integrate calendar.</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input style={{ ...inp }} placeholder="your_calendar@group.calendar.google.com" id="gcal-input" />
-                  <Btn color={C.blue} onClick={() => { const v = document.getElementById("gcal-input").value.trim(); if(v) upd(d=>({...d,googleCalendarId:v})); }}>Save</Btn>
+                  <Btn color={C.orange} onClick={() => { const v = document.getElementById("gcal-input").value.trim(); if(v) upd(d=>({...d,googleCalendarId:v})); }}>Save</Btn>
                 </div>
               </div>
             )}
@@ -447,7 +447,7 @@ export default function App() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ margin: 0 }}>Problems</h2>
-              {isOfficer && <div style={{ display: "flex", gap: 8 }}><Btn color={C.blue} onClick={() => setModal("prob")}>+ New problem</Btn><Btn onClick={() => setModal("unit")}>+ New unit</Btn></div>}
+              {isOfficer && <div style={{ display: "flex", gap: 8 }}><Btn color={C.orange} onClick={() => setModal("prob")}>+ New problem</Btn><Btn onClick={() => setModal("unit")}>+ New unit</Btn></div>}
             </div>
             {isGuest ? (
               <div style={{ ...cardS, borderLeft: `3px solid ${C.guest}`, textAlign: "center", padding: "2rem" }}>
@@ -478,7 +478,7 @@ export default function App() {
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
                         <Btn onClick={e => { e.stopPropagation(); setActiveUnit(unit.id); }}>Start unit →</Btn>
                         {isOfficer && <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
-                          <Btn color={C.blue} onClick={() => setModal({ type: "editUnit", unit })}>Edit problems</Btn>
+                          <Btn color={C.orange} onClick={() => setModal({ type: "editUnit", unit })}>Edit problems</Btn>
                           <OutBtn danger onClick={() => upd(d => ({ ...d, units: d.units.filter(x => x.id !== unit.id) }))}>Remove</OutBtn>
                         </div>}
                       </div>
@@ -513,10 +513,10 @@ export default function App() {
                 <div>
                   <span style={{ fontWeight: 600 }}>{u.name || u.username}</span>
                   <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>@{u.username}</span>
-                  <Tag c={u.role === "officer" ? C.blue : C.muted}>{u.role}</Tag>
+                  <Tag c={u.role === "officer" ? C.orange : C.muted}>{u.role}</Tag>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {u.role === "member" && <Btn color={C.blue} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "officer" } : x) }))}>Make officer</Btn>}
+                  {u.role === "member" && <Btn color={C.orange} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "officer" } : x) }))}>Make officer</Btn>}
                   {u.role === "officer" && <Btn color={C.muted} onClick={() => upd(d => ({ ...d, users: d.users.map(x => x.username === u.username ? { ...x, role: "member" } : x) }))}>Demote</Btn>}
                   <OutBtn danger onClick={() => upd(d => ({ ...d, users: d.users.filter(x => x.username !== u.username) }))}>Delete</OutBtn>
                 </div>
@@ -557,7 +557,7 @@ function ResourcesPage({ data, upd, isOfficer }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>Resources</h2>
-        {isOfficer && <Btn color={C.blue} onClick={() => setShowNewFolder(true)}>+ New folder</Btn>}
+        {isOfficer && <Btn color={C.orange} onClick={() => setShowNewFolder(true)}>+ New folder</Btn>}
       </div>
       {showNewFolder && (
         <div style={{ ...cardS, display: "flex", gap: 8, alignItems: "center" }}>
@@ -648,7 +648,7 @@ function OfficersPage({ data, upd, isDev }) {
         <h2 style={{ margin: 0 }}>Officer Portal</h2>
         {isDev && (
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn color={C.blue} onClick={() => setShowTaskModal(true)}>+ Task</Btn>
+            <Btn color={C.orange} onClick={() => setShowTaskModal(true)}>+ Task</Btn>
             <Btn onClick={() => setShowEventModal(true)}>+ Event</Btn>
           </div>
         )}
@@ -668,7 +668,7 @@ function OfficersPage({ data, upd, isDev }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 500, textDecoration: t.done ? "line-through" : "none", color: t.done ? C.muted : C.text }}>{t.title}</div>
                   {t.dueDate && <div style={{ fontSize: 11, color: isOverdue ? C.red : C.muted, marginTop: 3 }}>Due {t.dueDate}{isOverdue ? " — Overdue" : ""}</div>}
-                  {(t.assignees||[]).length > 0 && <div style={{ fontSize: 11, color: C.blue, marginTop: 2 }}>👤 {t.assignees.join(", ")}</div>}
+                  {(t.assignees||[]).length > 0 && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>👤 {t.assignees.join(", ")}</div>}
                 </div>
                 {isDev && <button onClick={e => { e.stopPropagation(); upd(d => ({ ...d, officerTasks: (d.officerTasks||[]).filter(x => x.id !== t.id) })); }} style={{ background: "transparent", border: "none", color: C.red, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>}
               </div>
@@ -731,19 +731,19 @@ function OfficersPage({ data, upd, isDev }) {
               {officerUsers.map(u => {
                 const sel = taskForm.assignees.includes(u.name || u.username);
                 return (
-                  <div key={u.username} onClick={() => toggleAssignee(u.name || u.username)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, cursor: "pointer", background: sel ? `${C.blue}18` : "transparent", marginBottom: 2 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? C.blue : C.border}`, background: sel ? C.blue : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div key={u.username} onClick={() => toggleAssignee(u.name || u.username)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, cursor: "pointer", background: sel ? `${C.bgInput}` : "transparent", marginBottom: 2 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? C.orange : C.border}`, background: sel ? C.orange : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {sel && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
                     </div>
                     <span style={{ fontSize: 14 }}>{u.name || u.username}</span>
-                    <Tag c={C.blue}>{u.role}</Tag>
+                    <Tag c={C.muted}>{u.role}</Tag>
                   </div>
                 );
               })}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <OutBtn onClick={() => setShowTaskModal(false)}>Cancel</OutBtn>
-              <Btn color={C.blue} onClick={addTask}>Add Task</Btn>
+              <Btn color={C.orange} onClick={addTask}>Add Task</Btn>
             </div>
           </div>
         </div>
@@ -828,7 +828,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Photos</h3>
-          {editing && <><Btn color={C.blue} onClick={() => ref.current.click()} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add photo</Btn><input ref={ref} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) addImg(e.target.files[0]); }} /></>}
+          {editing && <><Btn color={C.orange} onClick={() => ref.current.click()} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add photo</Btn><input ref={ref} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { if (e.target.files[0]) addImg(e.target.files[0]); }} /></>}
         </div>
         {(about.images||[]).length === 0 && !editing && <p style={{ color: C.muted, fontSize: 13 }}>No photos yet.</p>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
@@ -845,7 +845,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Officers</h3>
-          {editing && <Btn color={C.blue} onClick={() => setDraft(d => ({ ...d, officers: [...(d.officers||[]), { name: "", role: "Officer", image: "" }] }))} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add officer</Btn>}
+          {editing && <Btn color={C.orange} onClick={() => setDraft(d => ({ ...d, officers: [...(d.officers||[]), { name: "", role: "Officer", image: "" }] }))} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add officer</Btn>}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 10 }}>
           {(about.officers||[]).map((o, i) => (
@@ -876,7 +876,7 @@ function AboutPage({ data, upd, isOfficer }) {
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>Contact</h3>
-          {editing && <Btn color={C.blue} onClick={addContact} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add button</Btn>}
+          {editing && <Btn color={C.orange} onClick={addContact} style={{ fontSize: 12, padding: "5px 12px" }}>+ Add button</Btn>}
         </div>
         {contacts.length === 0 && !editing && <p style={{ color: C.muted, fontSize: 13 }}>No contact links yet.</p>}
         {!editing && contacts.length > 0 && (
