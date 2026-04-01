@@ -181,9 +181,9 @@ function Header({ user, onSignOut, onManage, isDev }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {user && <>
           <span style={{ fontSize: 13, color: "#cdd5e0" }}>{user.name || user.username}</span>
-          {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.orange : C.guest}>{user.role}</Tag>}
+          {user.role !== "member" && user.role !== "guest" && <Tag c={user.role === "developer" ? C.orange : user.role === "officer" ? C.orange : C.guest}>{user.role === "developer" ? "Developer" : user.role === "officer" ? "Officer" : user.role}</Tag>}
           {user.role === "guest" && <Tag c={C.guest}>guest</Tag>}
-          {isDev && <SecBtn onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</SecBtn>}
+          {isDev && <Btn color={C.orange} onClick={onManage} style={{ padding: "5px 12px", fontSize: 12 }}>Members</Btn>}
         </>}
         <OutBtn onClick={onSignOut} style={{ borderColor: "#ffffff33", color: "#cdd5e0" }}>{user ? "Sign out" : ""}</OutBtn>
       </div>
