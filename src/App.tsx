@@ -472,7 +472,7 @@ export default function App(){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{margin:0}}>Problems</h2>
               {isOfficer&&<div style={{display:"flex",gap:8}}>
-                <SecBtn onClick={()=>setModal("importSheet")}>↓ Import from Sheets</SecBtn>
+                <SecBtn onClick={()=>setModal("importSheet")}>Import from Sheets</SecBtn>
                 <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
                 <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
               </div>}
@@ -1277,7 +1277,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     return(
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480}} onClick={(e:any)=>e.stopPropagation()}>
-          <h3 style={{margin:"0 0 8px",fontSize:16}}>↓ Import from Google Sheets</h3>
+          <h3 style={{margin:"0 0 8px",fontSize:16}}>Import from Google Sheets</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Sheet must be <strong>publicly viewable</strong> with these columns in order:</p>
           <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.green,marginBottom:12}}>Title | Difficulty | Question | A | B | C | D | Answer</div>
           <p style={{color:C.muted,fontSize:12,margin:"0 0 12px"}}>Answer column: 0–3 or A–D (0/A = first choice). Row 1 is the header and is skipped.</p>
