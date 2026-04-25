@@ -195,12 +195,12 @@ function BugReportBtn({user}:any){
   return(
     <>
       <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:6}}>
-        🐛 Report a bug
+        Report a bug
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
           <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:420}} onClick={(e:any)=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 8px",fontSize:16}}>🐛 Report a Bug</h3>
+            <h3 style={{margin:"0 0 8px",fontSize:16}}>Report a Bug</h3>
             <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Describe what went wrong and we'll look into it.</p>
             {sent?(<div style={{textAlign:"center",padding:"1rem",color:C.green,fontWeight:600}}>✓ Report sent! Thanks!</div>):(
               <>
