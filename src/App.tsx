@@ -472,7 +472,7 @@ export default function App(){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{margin:0}}>Problems</h2>
               {isOfficer&&<div style={{display:"flex",gap:8}}>
-                <SecBtn onClick={()=>setModal("importSheet")}>Import from Sheets</SecBtn>
+                <SecBtn onClick={()=>setModal("importSheet")}>+Import from Sheets</SecBtn>
                 <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
                 <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
               </div>}
@@ -546,7 +546,7 @@ export default function App(){
                           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                             <span style={{fontWeight:700,fontSize:16}}>{cq.title}</span>
                             <Tag c={diffColor[cq.difficulty]||C.muted}>{cq.difficulty}</Tag>
-                            {cq.language&&<Tag c={C.purple}>{cq.language}</Tag>}
+                            {cq.language&&<Tag c={C.orange}>{cq.language}</Tag>}
                           </div>
                           <div style={{fontSize:13,color:C.muted}}>{cq.desc?.split("\n")[0]}</div>
                           <div style={{fontSize:12,color:C.muted,marginTop:6}}>{cq.testCases?.length||0} test cases</div>
@@ -556,7 +556,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
+                        <Btn color={C.orange} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
                           <OutBtn danger onClick={()=>upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}))}>Remove</OutBtn>
@@ -675,7 +675,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
               <textarea value={code} onChange={(e:any)=>setCode(e.target.value)} spellCheck={false}
                 style={{...inp,height:280,resize:"vertical",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.6}}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
-                <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:120}}>{running?"Running…":"▶ Run code"}</Btn>
+                <Btn color={C.orange} onClick={run} disabled={running} style={{minWidth:120}}>{running?"Running…":"▶ Run code"}</Btn>
               </div>
             </div>
             {results&&(
@@ -1277,7 +1277,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     return(
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480}} onClick={(e:any)=>e.stopPropagation()}>
-          <h3 style={{margin:"0 0 8px",fontSize:16}}>Import from Google Sheets</h3>
+          <h3 style={{margin:"0 0 8px",fontSize:16}}>+Import from Google Sheets</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Sheet must be <strong>publicly viewable</strong> with these columns in order:</p>
           <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.green,marginBottom:12}}>Title | Difficulty | Question | A | B | C | D | Answer</div>
           <p style={{color:C.muted,fontSize:12,margin:"0 0 12px"}}>Answer column: 0–3 or A–D (0/A = first choice). Row 1 is the header and is skipped.</p>
