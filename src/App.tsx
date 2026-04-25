@@ -532,7 +532,7 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
+                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
                   💡 Write your solution as a JavaScript function named <code style={{background:C.bgInput,padding:"1px 5px",borderRadius:3}}>solution</code>. Code runs directly in your browser against the test cases. Python/Java/C++ shown for reference only.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
