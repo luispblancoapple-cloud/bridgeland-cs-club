@@ -32,16 +32,28 @@ const LANGS=["JavaScript","Python","Java","C++"];
 
 const LANG_IDS:any={"JavaScript":93,"Python":71,"Java":62,"C++":54};
 
+// Convert JS-style test case input to the target language's syntax
+// JS uses single quotes for strings: 'hello' -> Java/C++ need "hello"
+function convertInput(input:string,lang:string):string{
+  if(lang==="JavaScript"||lang==="Python") return input;
+  // For Java and C++: replace single-quoted strings with double-quoted
+  // e.g. 'hello' -> "hello", '' -> ""
+  return input.replace(/'([^']*)'/g,(_:string,s:string)=>`"${s}"`);
+}
+
 function buildSubmission(code:string,lang:string,input:string):string{
+  const inp=convertInput(input,lang);
   if(lang==="Python"){
-    return `${code}\n\nresult = solution(${input})\nprint(result)`;
+    // Python uses single or double quotes fine, just pass through
+    return `${code}\n\n_result = solution(${input})\nprint(_result)`;
   }else if(lang==="Java"){
     if(!code.includes("class Main")&&!code.includes("class Solution")){
-      return `import java.util.*;\npublic class Main {\n${code}\npublic static void main(String[] args){\nSystem.out.println(solution(${input}));\n}\n}`;
+      // Wrap the user's method inside a Main class
+      return `import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n${code}\npublic static void main(String[] args){\nObject _r=solution(${inp});\nif(_r instanceof int[]){System.out.println(Arrays.toString((int[])_r));}else if(_r instanceof String[]){System.out.println(Arrays.toString((String[])_r));}else{System.out.println(_r);}\n}\n}`;
     }
     return code;
   }else if(lang==="C++"){
-    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\nauto result=solution(${input});\ncout<<result<<endl;\nreturn 0;\n}`;
+    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\nauto _r=solution(${inp});\ncout<<_r<<endl;\nreturn 0;\n}`;
   }else{
     return `${code}\nconsole.log(JSON.stringify(solution(${input})));`;
   }
@@ -755,6 +767,19 @@ function CodingView({cq,user,data,upd,onBack}:any){
                 {lang==="JavaScript"?"⚡ Runs instantly in your browser.":"☁ Runs on Judge0 cloud servers — may take a few seconds per test case."}
               </div>
               <textarea value={code} onChange={(e:any)=>setCode(e.target.value)} spellCheck={false}
+                onKeyDown={(e:any)=>{
+                  if(e.key==="Tab"){
+                    e.preventDefault();
+                    const ta=e.target;
+                    const start=ta.selectionStart;
+                    const end=ta.selectionEnd;
+                    const TAB="  "; // 2 spaces
+                    const newVal=code.substring(0,start)+TAB+code.substring(end);
+                    setCode(newVal);
+                    // Restore cursor after state update
+                    requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+TAB.length;});
+                  }
+                }}
                 style={{...inp,height:300,resize:"vertical",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.6,tabSize:2}}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
                 <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:140}}>
