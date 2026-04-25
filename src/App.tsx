@@ -30,6 +30,70 @@ const MINS=["00","15","30","45"];
 const AMPM=["AM","PM"];
 const LANGS=["JavaScript","Python","Java","C++"];
 
+const LANG_IDS:any={"JavaScript":93,"Python":71,"Java":62,"C++":54};
+
+function buildSubmission(code:string,lang:string,input:string):string{
+  if(lang==="Python"){
+    return `${code}\n\nresult = solution(${input})\nprint(result)`;
+  }else if(lang==="Java"){
+    if(!code.includes("class Main")&&!code.includes("class Solution")){
+      return `import java.util.*;\npublic class Main {\n${code}\npublic static void main(String[] args){\nSystem.out.println(solution(${input}));\n}\n}`;
+    }
+    return code;
+  }else if(lang==="C++"){
+    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\nauto result=solution(${input});\ncout<<result<<endl;\nreturn 0;\n}`;
+  }else{
+    return `${code}\nconsole.log(JSON.stringify(solution(${input})));`;
+  }
+}
+
+async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<any[]>{
+  const langId=LANG_IDS[lang]||93;
+  const PUBLIC="https://ce.judge0.com";
+  const results=await Promise.all(testCases.map(async(tc:any)=>{
+    try{
+      const src=buildSubmission(code,lang,tc.input);
+      const sub=await fetch(`${PUBLIC}/submissions?base64_encoded=false&wait=true`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify({source_code:src,language_id:langId,stdin:"",cpu_time_limit:5,memory_limit:262144}),
+      });
+      if(!sub.ok)throw new Error(`Judge0 error ${sub.status}`);
+      const result=await sub.json();
+      const stdout=(result.stdout||"").trim();
+      const stderr=(result.stderr||"").trim();
+      const compileErr=(result.compile_output||"").trim();
+      if(result.status?.id===6)return{input:tc.input,expected:tc.expected,got:`Compile error: ${compileErr}`,pass:false};
+      if(result.status?.id===5)return{input:tc.input,expected:tc.expected,got:"Time limit exceeded",pass:false};
+      if(result.status?.id!==3){
+        const errMsg=stderr||compileErr||result.status?.description||"Runtime error";
+        return{input:tc.input,expected:tc.expected,got:`Error: ${errMsg}`,pass:false};
+      }
+      const got=stdout;
+      const expected=tc.expected.trim().replace(/^['"]|['"]$/g,"");
+      const pass=got===expected||got===tc.expected.trim();
+      return{input:tc.input,expected:tc.expected,got,pass};
+    }catch(e:any){
+      return{input:tc.input,expected:tc.expected,got:`Network error: ${e.message}`,pass:false};
+    }
+  }));
+  return results;
+}
+
+function runCodeJS(code:string,testCases:any[]){
+  return testCases.map(tc=>{
+    try{
+      const fn=new Function(code+`\nreturn solution(${tc.input});`);
+      const result=fn();
+      const got=JSON.stringify(result);
+      const expected=tc.expected.trim();
+      let pass=false;
+      try{pass=JSON.stringify(JSON.parse(expected))===got;}catch{pass=String(result)===expected.replace(/^['"]|['"]$/g,"");}
+      return{input:tc.input,expected:tc.expected,got:String(result),pass};
+    }catch(e:any){return{input:tc.input,expected:tc.expected,got:`Error: ${e.message}`,pass:false};}
+  });
+}
+
 function DatePicker({value,onChange}:any){
   const today=new Date();
   const [vy,setVy]=useState(value?parseInt(value.slice(0,4)):today.getFullYear());
@@ -195,12 +259,12 @@ function BugReportBtn({user}:any){
   return(
     <>
       <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:6}}>
-        Report a bug
+        🐛 Report a bug
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
           <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:420}} onClick={(e:any)=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 8px",fontSize:16}}>Report a Bug</h3>
+            <h3 style={{margin:"0 0 8px",fontSize:16}}>🐛 Report a Bug</h3>
             <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Describe what went wrong and we'll look into it.</p>
             {sent?(<div style={{textAlign:"center",padding:"1rem",color:C.green,fontWeight:600}}>✓ Report sent! Thanks!</div>):(
               <>
@@ -472,7 +536,7 @@ export default function App(){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{margin:0}}>Problems</h2>
               {isOfficer&&<div style={{display:"flex",gap:8}}>
-                <SecBtn onClick={()=>setModal("importSheet")}>+Import from Sheets</SecBtn>
+                <SecBtn onClick={()=>setModal("importSheet")}>↓ Import from Sheets</SecBtn>
                 <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
                 <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
               </div>}
@@ -504,7 +568,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit c</Btn>
+                        <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editUnit",unit})}>Edit problems</SecBtn>
                           <OutBtn danger onClick={()=>upd((d:any)=>({...d,units:d.units.filter((x:any)=>x.id!==unit.id)}))}>Remove</OutBtn>
@@ -532,7 +596,7 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+                <div style={{background:`${C.blue}18`,border:`1px solid ${C.blue}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
                   💡 Write your solution as a JavaScript function named <code style={{background:C.bgInput,padding:"1px 5px",borderRadius:3}}>solution</code>. Code runs directly in your browser against the test cases. Python/Java/C++ shown for reference only.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
@@ -546,7 +610,7 @@ export default function App(){
                           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                             <span style={{fontWeight:700,fontSize:16}}>{cq.title}</span>
                             <Tag c={diffColor[cq.difficulty]||C.muted}>{cq.difficulty}</Tag>
-                            {cq.language&&<Tag c={C.orange}>{cq.language}</Tag>}
+                            {cq.language&&<Tag c={C.purple}>{cq.language}</Tag>}
                           </div>
                           <div style={{fontSize:13,color:C.muted}}>{cq.desc?.split("\n")[0]}</div>
                           <div style={{fontSize:12,color:C.muted,marginTop:6}}>{cq.testCases?.length||0} test cases</div>
@@ -556,7 +620,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn color={C.orange} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open→</Btn>
+                        <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
                           <OutBtn danger onClick={()=>upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}))}>Remove</OutBtn>
@@ -607,24 +671,44 @@ export default function App(){
 }
 
 function CodingView({cq,user,data,upd,onBack}:any){
+  const STARTER:any={
+    "JavaScript":"function solution() {\n  // your code here\n}",
+    "Python":"def solution():\n    # your code here\n    pass",
+    "Java":"static int solution(int a, int b) {\n    // your code here\n    return 0;\n}",
+    "C++":"auto solution(int a, int b) {\n    // your code here\n    return 0;\n}",
+  };
   const [lang,setLang]=useState(cq.language||"JavaScript");
-  const [code,setCode]=useState(cq.starterCode||"function solution() {\n  // your code here\n}");
+  const [code,setCode]=useState(cq.starterCode||STARTER["JavaScript"]);
   const [results,setResults]=useState<any>(null);
   const [running,setRunning]=useState(false);
+  const [runErr,setRunErr]=useState("");
   const myBest=data.codingSubmissions?.[user.username]?.[cq.id]?.score??null;
 
-  const run=()=>{
-    setRunning(true);
-    setTimeout(()=>{
-      const res=runCode(code,cq.testCases||[]);
+  const switchLang=(l:string)=>{
+    setLang(l);
+    // Only reset code to starter if user hasn't edited from the default
+    setCode(STARTER[l]||STARTER["JavaScript"]);
+  };
+
+  const run=async()=>{
+    setRunning(true);setResults(null);setRunErr("");
+    try{
+      let res:any[];
+      if(lang==="JavaScript"){
+        // Run locally in browser for JS — instant
+        res=runCodeJS(code,cq.testCases||[]);
+      }else{
+        // Run on Judge0 for Python/Java/C++
+        res=await runWithJudge0(code,lang,cq.testCases||[]);
+      }
       setResults(res);
       const passed=res.filter((r:any)=>r.pass).length;
       const score=cq.testCases?.length?Math.round((passed/cq.testCases.length)*100):0;
       if(score>(myBest??-1)){
-        upd((d:any)=>({...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score,code,timestamp:new Date().toISOString()}}}}));
+        upd((d:any)=>({...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score,code,lang,timestamp:new Date().toISOString()}}}}));
       }
-      setRunning(false);
-    },100);
+    }catch(e:any){setRunErr(e.message);}
+    setRunning(false);
   };
 
   const passed=results?.filter((r:any)=>r.pass).length??0;
@@ -634,7 +718,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
       <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
-      <div style={{maxWidth:1000,margin:"0 auto",padding:"1.5rem 1rem"}}>
+      <div style={{maxWidth:1100,margin:"0 auto",padding:"1.5rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding</OutBtn>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
           <span style={{fontWeight:700,fontSize:22}}>{cq.title}</span>
@@ -663,28 +747,36 @@ function CodingView({cq,user,data,upd,onBack}:any){
                 <h3 style={{margin:0,fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Your Solution</h3>
                 <div style={{display:"flex",gap:4}}>
                   {LANGS.map(l=>(
-                    <button key={l} onClick={()=>setLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.blue:C.border}`,borderRadius:5,background:lang===l?`${C.blue}22`:"transparent",color:lang===l?C.blue:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
+                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.blue:C.border}`,borderRadius:5,background:lang===l?`${C.blue}22`:"transparent",color:lang===l?C.blue:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
                   ))}
                 </div>
               </div>
-              {lang!=="JavaScript"&&(
-                <div style={{background:`${C.purple}18`,border:`1px solid ${C.purple}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.purple,marginBottom:8}}>
-                  ⚠ Showing {lang} syntax. Execution runs as JavaScript — write your logic using the same function structure.
-                </div>
-              )}
+              <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.blue,marginBottom:8}}>
+                {lang==="JavaScript"?"⚡ Runs instantly in your browser.":"☁ Runs on Judge0 cloud servers — may take a few seconds per test case."}
+              </div>
               <textarea value={code} onChange={(e:any)=>setCode(e.target.value)} spellCheck={false}
-                style={{...inp,height:280,resize:"vertical",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.6}}/>
+                style={{...inp,height:300,resize:"vertical",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:1.6,tabSize:2}}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
-                <Btn color={C.orange} onClick={run} disabled={running} style={{minWidth:120}}>{running?"Running…":"▶ Run code"}</Btn>
+                <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:140}}>
+                  {running?<span style={{display:"flex",alignItems:"center",gap:8}}><span style={{display:"inline-block",width:12,height:12,border:`2px solid #ffffff55`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Running…</span>:"▶ Run code"}
+                </Btn>
               </div>
             </div>
+            {runErr&&<div style={{...cardS,borderLeft:`3px solid ${C.red}`,color:C.red,fontSize:13}}>⚠ {runErr}</div>}
+            {running&&!results&&(
+              <div style={{...cardS,textAlign:"center",padding:"1.5rem",color:C.muted,fontSize:13}}>
+                <div style={{marginBottom:8,fontSize:20}}>⏳</div>
+                Running your code against {cq.testCases?.length||0} test case{(cq.testCases?.length||0)!==1?"s":""}…
+                {lang!=="JavaScript"&&<div style={{fontSize:11,marginTop:6}}>Submitting to Judge0 execution server</div>}
+              </div>
+            )}
             {results&&(
               <div style={cardS}>
                 <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
                   <div style={{fontSize:28,fontWeight:700,color:score===100?C.green:score>0?C.orange:C.red}}>{score}%</div>
                   <div>
                     <div style={{fontWeight:600,fontSize:14}}>{passed}/{total} test cases passed</div>
-                    <div style={{fontSize:12,color:C.muted}}>{score===100?"All tests passed! 🎉":score>0?"Keep going!":"No tests passed yet"}</div>
+                    <div style={{fontSize:12,color:C.muted}}>{score===100?"All tests passed! 🎉":score>0?"Keep going, almost there!":"No tests passed yet"}</div>
                   </div>
                 </div>
                 {results.map((r:any,i:number)=>(
@@ -1247,29 +1339,56 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
   }
 
   if(isImportSheet){
+    // Parse a single CSV row handling quoted fields with commas inside
+    const parseCSVRow=(row:string):string[]=>{
+      const result:string[]=[];
+      let cur="",inQuote=false;
+      for(let i=0;i<row.length;i++){
+        const ch=row[i];
+        if(ch==='"'){inQuote=!inQuote;}
+        else if(ch===","&&!inQuote){result.push(cur.trim());cur="";}
+        else{cur+=ch;}
+      }
+      result.push(cur.trim());
+      return result.map(s=>s.replace(/^"|"$/g,"").trim());
+    };
+
     const doImport=async()=>{
       setImporting(true);setImportErr("");
       try{
         const match=sheetUrl.trim().match(/\/d\/([\w-]+)/);
-        if(!match)throw new Error("Invalid Google Sheets URL");
-        const csvUrl=`https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=0`;
-        const resp=await fetch(csvUrl);
-        if(!resp.ok)throw new Error("Could not fetch sheet. Make sure it is shared publicly (Anyone with the link can view).");
+        if(!match)throw new Error("Invalid Google Sheets URL — paste the full URL from your browser.");
+        const sheetId=match[1];
+        // Extract gid (tab id) if present
+        const gidMatch=sheetUrl.match(/[#&]gid=(\d+)/);
+        const gid=gidMatch?gidMatch[1]:"0";
+        // Use CORS proxy to bypass browser restriction
+        const csvUrl=`https://corsproxy.io/?url=${encodeURIComponent(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`)}`;
+        let resp=await fetch(csvUrl);
+        if(!resp.ok){
+          // Fallback: try direct (works if deployed on same origin or CORS allowed)
+          resp=await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`);
+        }
+        if(!resp.ok)throw new Error("Could not fetch sheet. Make sure sharing is set to \"Anyone with the link can view\".");
         const text=await resp.text();
-        const lines=text.split("\n").map((l:string)=>l.trim()).filter((l:string)=>l);
+        if(text.includes("<html")||text.includes("<!DOCTYPE"))throw new Error("Got an HTML page instead of CSV. Make sure the sheet is publicly shared (File → Share → Anyone with the link → Viewer).");
+        const lines=text.split("\n").filter((l:string)=>l.trim());
+        if(lines.length<2)throw new Error("Sheet appears empty or has only a header row.");
         const rows=lines.slice(1);
         let cnt=0;
         const newProbs=rows.map((row:string)=>{
-          const cols=row.match(/(".*?"|[^,]+)(?=,|$)/g)?.map((c:string)=>c.replace(/^"|"$/g,"").trim())||row.split(",").map((c:string)=>c.trim());
-          if(cols.length<7)return null;
+          const cols=parseCSVRow(row);
+          if(cols.length<8)return null;
           const [title,difficulty,desc,a,b,c,d,ansRaw]=cols;
+          if(!title||!desc)return null;
           let answer=parseInt(ansRaw);
-          if(isNaN(answer)){const m:any={"A":0,"B":1,"C":2,"D":3};answer=m[ansRaw?.toUpperCase()]??0;}
+          if(isNaN(answer)){const m:any={"A":0,"B":1,"C":2,"D":3};answer=m[(ansRaw||"").toUpperCase().trim()]??0;}
           cnt++;
-          return{id:Date.now()+cnt,title,difficulty:["Easy","Medium","Hard"].includes(difficulty)?difficulty:"Easy",desc,choices:[a,b,c,d],answer};
+          return{id:Date.now()+cnt,title,difficulty:["Easy","Medium","Hard"].includes(difficulty)?difficulty:"Easy",desc,choices:[a,b,c,d],answer:Math.min(Math.max(answer,0),3)};
         }).filter(Boolean);
-        if(newProbs.length===0)throw new Error("No valid rows found. Expected columns: Title, Difficulty, Question, A, B, C, D, Answer");
+        if(newProbs.length===0)throw new Error(`No valid rows found in ${rows.length} data row(s). Check the column order: Title, Difficulty, Question, A, B, C, D, Answer`);
         upd((d:any)=>({...d,problems:[...d.problems,...newProbs]}));
+        setImportErr("");
         close();
       }catch(e:any){setImportErr(e.message);}
       setImporting(false);
@@ -1277,13 +1396,18 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     return(
       <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480}} onClick={(e:any)=>e.stopPropagation()}>
-          <h3 style={{margin:"0 0 8px",fontSize:16}}>+Import from Google Sheets</h3>
-          <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Sheet must be <strong>publicly viewable</strong> with these columns in order:</p>
-          <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.green,marginBottom:12}}>Title | Difficulty | Question | A | B | C | D | Answer</div>
-          <p style={{color:C.muted,fontSize:12,margin:"0 0 12px"}}>Answer column: 0–3 or A–D (0/A = first choice). Row 1 is the header and is skipped.</p>
+          <h3 style={{margin:"0 0 8px",fontSize:16}}>↓ Import from Google Sheets</h3>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 10px"}}>Sheet must be set to <strong>Anyone with the link can view</strong> (File → Share).</p>
+          <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.green,marginBottom:6}}>Row 1 (header, skipped):</div>
+          <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.text,marginBottom:10}}>Title | Difficulty | Question | A | B | C | D | Answer</div>
+          <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"8px 10px",fontSize:12,color:C.blue,marginBottom:12}}>
+            <div><strong>Difficulty:</strong> Easy, Medium, or Hard</div>
+            <div><strong>Answer:</strong> 0–3 (0=A, 1=B, 2=C, 3=D) or A/B/C/D</div>
+            <div style={{marginTop:4}}>Cells with commas must be wrapped in quotes in the sheet.</div>
+          </div>
           <label style={lbl}>Google Sheets URL</label>
           <input style={{...inp,marginBottom:10}} value={sheetUrl} onChange={(e:any)=>setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..."/>
-          {importErr&&<p style={{color:C.red,fontSize:13,margin:"0 0 10px"}}>⚠ {importErr}</p>}
+          {importErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 10px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {importErr}</div>}
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={doImport} disabled={importing||!sheetUrl.trim()}>{importing?"Importing…":"Import"}</Btn></div>
         </div>
       </div>
