@@ -45,15 +45,15 @@ function buildSubmission(code:string,lang:string,input:string):string{
   const inp=convertInput(input,lang);
   if(lang==="Python"){
     // Python uses single or double quotes fine, just pass through
-    return `${code}\n\n_result = solution(${input})\nprint(_result)`;
+    return `${code}\n\ntry:\n    _result = solution(${input})\n    print(_result)\nexcept Exception as e:\n    print(f"Error: {e}")`;
   }else if(lang==="Java"){
     if(!code.includes("class Main")&&!code.includes("class Solution")){
       // Wrap the user's method inside a Main class
-      return `import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n${code}\npublic static void main(String[] args){\nObject _r=solution(${inp});\nif(_r instanceof int[]){System.out.println(Arrays.toString((int[])_r));}else if(_r instanceof String[]){System.out.println(Arrays.toString((String[])_r));}else{System.out.println(_r);}\n}\n}`;
+      return `import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n${code}\npublic static void main(String[] args){\ntry{\nObject _r=solution(${inp});\nif(_r instanceof int[]){System.out.println(Arrays.toString((int[])_r));}\nelse if(_r instanceof long[]){System.out.println(Arrays.toString((long[])_r));}\nelse if(_r instanceof double[]){System.out.println(Arrays.toString((double[])_r));}\nelse if(_r instanceof String[]){System.out.println(Arrays.toString((String[])_r));}\nelse if(_r instanceof boolean[]){System.out.println(Arrays.toString((boolean[])_r));}\nelse{System.out.println(_r);}\n}catch(Exception e){System.out.println("Error: "+e.getMessage());}\n}\n}`;
     }
     return code;
   }else if(lang==="C++"){
-    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\nauto _r=solution(${inp});\ncout<<_r<<endl;\nreturn 0;\n}`;
+    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\ntry{\nauto _r=solution(${inp});\ncout<<_r<<"\n";\n}catch(exception& e){cout<<"Error: "<<e.what()<<"\n";}\nreturn 0;\n}`;
   }else{
     return `${code}\nconsole.log(JSON.stringify(solution(${input})));`;
   }
@@ -81,12 +81,16 @@ async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<an
         const errMsg=stderr||compileErr||result.status?.description||"Runtime error";
         return{input:tc.input,expected:tc.expected,got:`Error: ${errMsg}`,pass:false};
       }
-      const got=stdout;
+      const got=stdout.trim();
       const expected=tc.expected.trim().replace(/^['"]|['"]$/g,"");
-      const pass=got===expected||got===tc.expected.trim();
+      // Normalize: compare trimmed, and also try with/without quotes, and numeric comparison
+      const pass=got===expected
+        ||got===tc.expected.trim()
+        ||(parseFloat(got)===parseFloat(expected)&&!isNaN(parseFloat(got)))
+        ||got.toLowerCase()===expected.toLowerCase();
       return{input:tc.input,expected:tc.expected,got,pass};
     }catch(e:any){
-      return{input:tc.input,expected:tc.expected,got:`Network error: ${e.message}`,pass:false};
+      return{input:tc.input,expected:tc.expected,got:`Connection error — Judge0 may be temporarily unavailable. Try again in a moment.`,pass:false};
     }
   }));
   return results;
@@ -203,13 +207,21 @@ const initData:any={
     heading:"About Bridgeland CS Club",
     body:"We are a community of students passionate about computer science, coding, and technology. Whether you're a beginner or an experienced programmer, there's a place for you here!\n\nWe meet every Monday and Thursday from 2:40–3:50 PM to learn new concepts, practice for UIL competitions, work on projects, and have fun. Join us and be part of something great.",
     images:[],
-    officers:[{name:"President",role:"President",image:""},{name:"Vice President",role:"Officer",image:""}],
+    officers:[{name:"President",role:"President",image:""},{name:"Vice President",role:"Vice President",image:""}],
     contacts:[],
   },
 };
 
-async function saveData(d:any){try{await setDoc(DATA_DOC,d);}catch(e){console.error("Save failed",e);}}
-function toB64(file:File):Promise<string>{return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result as string);r.onerror=rej;r.readAsDataURL(file);});}
+async function saveData(d:any){if(!d)return;try{await setDoc(DATA_DOC,d);}catch(e){console.error("Save failed",e);}}
+function toB64(file:File):Promise<string>{
+  return new Promise((res,rej)=>{
+    if(file.size>4*1024*1024){rej(new Error("Image too large (max 4MB)"));return;}
+    const r=new FileReader();
+    r.onload=()=>res(r.result as string);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
 
 function ImgPick({label="Add image (optional)",onPick,preview}:any){
   const ref=useRef<any>();
@@ -217,7 +229,7 @@ function ImgPick({label="Add image (optional)",onPick,preview}:any){
     <div style={{marginBottom:12}}>
       <div style={{fontSize:12,color:C.muted,marginBottom:6}}>{label}</div>
       <button type="button" onClick={()=>ref.current.click()} style={{background:C.bgInput,border:`1px dashed ${C.border}`,color:C.muted,padding:"8px 14px",borderRadius:6,cursor:"pointer",fontSize:13,width:"100%"}}>Click to upload image</button>
-      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0])onPick(await toB64(e.target.files[0]));}}/>
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){alert(err.message);}}}}/>
       {preview&&<img src={preview} alt="" style={{marginTop:8,width:"100%",maxHeight:110,objectFit:"cover",borderRadius:6,border:`1px solid ${C.border}`}}/>}
     </div>
   );
@@ -268,11 +280,21 @@ function ForumPage({user,isGuest}:any){
   const [loading,setLoading]=useState(true);
 
   const loadThreads=async()=>{
+    setLoading(true);
     try{
       const q=query(collection(db,"forumThreads"),orderBy("createdAt","desc"));
       const snap=await getDocs(q);
       setThreads(snap.docs.map((d:any)=>({id:d.id,...d.data()})));
-    }catch(e){console.error(e);}
+    }catch(e:any){
+      console.error(e);
+      // createdAt index may not exist yet — fallback without ordering
+      try{
+        const snap=await getDocs(collection(db,"forumThreads"));
+        const docs=snap.docs.map((d:any)=>({id:d.id,...d.data()}));
+        docs.sort((a:any,b:any)=>((b.createdAt||"")>(a.createdAt||"")?1:-1));
+        setThreads(docs);
+      }catch(e2){console.error(e2);}
+    }
     setLoading(false);
   };
 
@@ -353,7 +375,15 @@ function ThreadView({thread,user,onBack}:any){
     getDocs(q).then((snap:any)=>{
       setReplies(snap.docs.map((d:any)=>({id:d.id,...d.data()})));
       setLoading(false);
-    }).catch((e:any)=>{console.error(e);setLoading(false);});
+    }).catch(()=>{
+      // Fallback without ordering
+      getDocs(collection(db,"forumThreads",thread.id,"replies")).then((snap:any)=>{
+        const docs=snap.docs.map((d:any)=>({id:d.id,...d.data()}));
+        docs.sort((a:any,b:any)=>((a.createdAt||"")>(b.createdAt||"")?1:-1));
+        setReplies(docs);
+        setLoading(false);
+      }).catch(()=>setLoading(false));
+    });
   },[thread.id]);
 
   const postReply=async()=>{
@@ -366,7 +396,7 @@ function ThreadView({thread,user,onBack}:any){
     };
     const ref=await addDoc(collection(db,"forumThreads",thread.id,"replies"),r);
     // Update reply count on thread
-    await updateDoc(doc(db,"forumThreads",thread.id),{replyCount:(thread.replyCount||0)+replies.length+1});
+    await updateDoc(doc(db,"forumThreads",thread.id),{replyCount:replies.length+1});
     setReplies((prev:any)=>[...prev,{id:ref.id,...r}]);
     setNewReply("");
   };
@@ -419,7 +449,10 @@ function BugReportBtn({user}:any){
   const imgRef=useRef<any>();
 
   const pickImage=async(e:any)=>{
-    if(e.target.files[0]) setImage(await toB64(e.target.files[0]));
+    if(e.target.files[0]){
+      try{setImage(await toB64(e.target.files[0]));}
+      catch(err:any){alert(err.message);}
+    }
   };
 
   const submit=async()=>{
@@ -522,7 +555,7 @@ export default function App(){
   const isOfficer=user&&(user.role==="officer"||user.role==="developer");
   const isDev=user&&user.role==="developer";
   const isGuest=user&&user.role==="guest";
-  const myCompleted=user&&!isGuest?(data.completions[user.username]||[]):[];
+  const myCompleted=user&&!isGuest?((data.completions||{})[user.username]||[]):[];
 
   const login=()=>{
     if(loginForm.username===DEV_ACCOUNT.username&&loginForm.password===DEV_ACCOUNT.password){setUser(DEV_ACCOUNT);setLoginErr("");return;}
@@ -593,18 +626,18 @@ export default function App(){
   );
 
   if(activeCoding!==null){
-    const cq=(data.codingQuestions||[]).find((q:any)=>q.id===activeCoding);
-    if(!cq){setActiveCoding(null);return null;}
+    const cq=(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(activeCoding));
+    if(!cq){ return <div style={{padding:'2rem',color:C.muted}}>Question not found. <button onClick={()=>setActiveCoding(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
     return <CodingView cq={cq} user={user} data={data} upd={upd} onBack={()=>setActiveCoding(null)}/>;
   }
   if(activeProblem!==null){
     const prob=data.problems.find((p:any)=>p.id===activeProblem.id);
-    if(!prob){setActiveProblem(null);return null;}
+    if(!prob){ return <div style={{padding:'2rem',color:C.muted}}>Problem not found. <button onClick={()=>setActiveProblem(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
     return <ProblemView prob={prob} user={user} data={data} upd={upd} onBack={()=>setActiveProblem(null)} unitCtx={activeProblem.unitCtx} onNext={activeProblem.onNext}/>;
   }
   if(activeUnit!==null){
     const unit=data.units.find((u:any)=>u.id===activeUnit);
-    if(!unit){setActiveUnit(null);return null;}
+    if(!unit){ return <div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveUnit(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
     return <UnitView unit={unit} data={data} user={user} upd={upd} onBack={()=>setActiveUnit(null)}
       onFinish={()=>{setActiveProblem(null);setActiveUnit(null);}}
       onProblem={(pid:any,ctx:any)=>setActiveProblem({id:pid,unitCtx:ctx,onNext:ctx.onNext})}/>;
@@ -632,7 +665,7 @@ export default function App(){
             </div>
             {!isGuest&&(
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
-                {[["Members",data.users.length],["Events",data.events.length],["Units",data.units.length],["Problems Solved",myCompleted.length]].map(([l,v]:any)=>(
+                {[["Members",data.users.length],["Events",data.events.length],["Units",(data.units||[]).length],["Problems Solved",myCompleted.length]].map(([l,v]:any)=>(
                   <div key={l} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem",textAlign:"center"}}>
                     <div style={{fontSize:26,fontWeight:700,color:C.orange}}>{v}</div>
                     <div style={{fontSize:13,color:C.muted,marginTop:4}}>{l}</div>
@@ -644,7 +677,7 @@ export default function App(){
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
-                {[...data.users].map((u:any)=>({name:u.name||u.username,username:u.username,count:(data.completions[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>(
+                {[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,count:(data.completions[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>(
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
                     <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.blue}44`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.blue:C.muted,flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
@@ -655,7 +688,7 @@ export default function App(){
               </div></>
             )}
             <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Latest announcements</h3>
-            {data.announcements.slice(-2).reverse().map((a:any)=>(
+            {(data.announcements||[]).slice(-2).reverse().map((a:any)=>(
               <div key={a.id} style={{...cardS,borderLeft:`3px solid ${C.orange}`}}>
                 {a.image&&<img src={a.image} alt="" style={{width:"100%",maxHeight:160,objectFit:"cover",borderRadius:6,marginBottom:10}}/>}
                 <div style={{fontWeight:600,marginBottom:4}}>{a.title}</div>
@@ -674,12 +707,12 @@ export default function App(){
               <h2 style={{margin:0}}>Announcements</h2>
               {isOfficer&&<Btn onClick={()=>setModal("ann")}>+ Add</Btn>}
             </div>
-            {[...data.announcements].reverse().map((a:any)=>(
+            {[...(data.announcements||[])].reverse().map((a:any)=>(
               <div key={a.id} style={{...cardS,borderLeft:`3px solid ${C.orange}`}}>
                 {a.image&&<img src={a.image} alt="" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:6,marginBottom:10}}/>}
                 <div style={{display:"flex",justifyContent:"space-between"}}>
                   <div style={{fontWeight:600,fontSize:15}}>{a.title}</div>
-                  {isOfficer&&<OutBtn danger onClick={()=>upd((d:any)=>({...d,announcements:d.announcements.filter((x:any)=>x.id!==a.id)}))}>Remove</OutBtn>}
+                  {isOfficer&&<OutBtn danger onClick={()=>{if(window.confirm("Remove this announcement?"))upd((d:any)=>({...d,announcements:(d.announcements||[]).filter((x:any)=>x.id!==a.id)}));}}>Remove</OutBtn>}
                 </div>
                 <div style={{fontSize:14,color:C.muted,margin:"8px 0"}}>{a.body}</div>
                 <div style={{fontSize:11,color:C.muted}}>{a.date}</div>
@@ -711,7 +744,7 @@ export default function App(){
               </div>
             )}
             {data.googleCalendarId&&isDev&&<div style={{marginBottom:12,textAlign:"right"}}><OutBtn danger onClick={()=>upd((d:any)=>({...d,googleCalendarId:""}))}>Remove calendar</OutBtn></div>}
-            {data.events.map((e:any)=>(
+            {(data.events||[]).map((e:any)=>(
               <div key={e.id} style={cardS}>
                 {e.image&&<img src={e.image} alt="" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:6,marginBottom:10}}/>}
                 <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -720,7 +753,7 @@ export default function App(){
                     <div style={{fontSize:13,color:C.muted,marginTop:4}}>{e.date} · {e.time} · {e.location}</div>
                     <div style={{fontSize:13,marginTop:6}}>{e.desc}</div>
                   </div>
-                  {isOfficer&&<OutBtn danger onClick={()=>upd((d:any)=>({...d,events:d.events.filter((x:any)=>x.id!==e.id)}))}>Remove</OutBtn>}
+                  {isOfficer&&<OutBtn danger onClick={()=>{if(window.confirm("Remove this event?"))upd((d:any)=>({...d,events:(d.events||[]).filter((x:any)=>x.id!==e.id)}));}}>Remove</OutBtn>}
                 </div>
               </div>
             ))}
@@ -734,7 +767,6 @@ export default function App(){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{margin:0}}>Problems</h2>
               {isOfficer&&<div style={{display:"flex",gap:8}}>
-                <SecBtn onClick={()=>setModal("importSheet")}>↓ Import from Sheets</SecBtn>
                 <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
                 <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
               </div>}
@@ -748,10 +780,10 @@ export default function App(){
             ):(
               <>
                 <div style={{background:`${C.orange}18`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>Units group problems together. Start a unit to go through them back-to-back.</div>
-                {data.units.length===0&&<p style={{color:C.muted}}>No units yet.</p>}
-                {data.units.map((unit:any)=>{
-                  const probs=unit.problemIds.map((id:any)=>data.problems.find((p:any)=>p.id===id)).filter(Boolean);
-                  const solved=probs.filter((p:any)=>myCompleted.includes(p.id)).length;
+                {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
+                {(data.units||[]).map((unit:any)=>{
+                  const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
+                  const solved=probs.filter((p:any)=>myCompleted.some((id:any)=>String(id)===String(p.id))).length;
                   return(
                     <div key={unit.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveUnit(unit.id)}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -769,7 +801,7 @@ export default function App(){
                         <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editUnit",unit})}>Edit problems</SecBtn>
-                          <OutBtn danger onClick={()=>upd((d:any)=>({...d,units:d.units.filter((x:any)=>x.id!==unit.id)}))}>Remove</OutBtn>
+                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,units:(d.units||[]).filter((x:any)=>x.id!==unit.id)}));}}>Remove</OutBtn>
                         </div>}
                       </div>
                     </div>
@@ -795,11 +827,11 @@ export default function App(){
             ):(
               <>
                 <div style={{background:`${C.blue}18`,border:`1px solid ${C.blue}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
-                  💡 Write your solution as a JavaScript function named <code style={{background:C.bgInput,padding:"1px 5px",borderRadius:3}}>solution</code>. Code runs directly in your browser against the test cases. Python/Java/C++ shown for reference only.
+                  💡 Select a language and write your solution. Your code runs on Judge0 servers — results appear in seconds.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
                 {(data.codingQuestions||[]).map((cq:any)=>{
-                  const sub=data.codingSubmissions?.[user.username]?.[cq.id];
+                  const sub=(data.codingSubmissions||{})?.[user.username]?.[cq.id];
                   const pct=sub?sub.score:null;
                   return(
                     <div key={cq.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveCoding(cq.id)}>
@@ -821,7 +853,7 @@ export default function App(){
                         <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
-                          <OutBtn danger onClick={()=>upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}))}>Remove</OutBtn>
+                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}));}}>Remove</OutBtn>
                         </div>}
                       </div>
                     </div>
@@ -856,7 +888,7 @@ export default function App(){
                 <div style={{display:"flex",gap:8}}>
                   {u.role==="member"&&<SecBtn onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Make officer</SecBtn>}
                   {u.role==="officer"&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"member"}:x)}))}>Demote</Btn>}
-                  <OutBtn danger onClick={()=>upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}>Delete</OutBtn>
+                  <OutBtn danger onClick={()=>{if(window.confirm(`Delete ${u.name||u.username}? This cannot be undone.`))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>
                 </div>
               </div>
             ))}
@@ -871,9 +903,9 @@ export default function App(){
 
 
 /* ---- CODE EDITOR with IDE quality-of-life features ---- */
-const PAIRS:any = {'(':')','{':'}','[':']','"':'"',"'":" ' "};
-const OPEN_PAIRS = new Set(['(', '{', '[', '"', "'"]);
-const CLOSE_PAIRS = new Set([')', '}', ']', '"', "'"]);
+const PAIRS:any = {'(':')','{':'}','[':']','"':'"'};
+const OPEN_PAIRS = new Set(['(', '{', '[', '"']);
+const CLOSE_PAIRS = new Set([')', '}', ']', '"']);
 
 // Java keywords for simple syntax highlighting via div overlay
 const JAVA_KEYWORDS = ['public','private','protected','static','void','int','String','boolean','double','float','long','char','byte','short','return','if','else','for','while','do','switch','case','break','continue','new','class','interface','extends','implements','this','super','null','true','false','final','abstract','import','package','try','catch','finally','throws','throw'];
@@ -1004,7 +1036,7 @@ function CodeEditor({code,onChange,lang}:any){
       <div style={{background:C.bgCard,borderBottom:`1px solid ${C.border}`,padding:"3px 10px",fontSize:11,color:C.muted,display:"flex",gap:12}}>
         <span>Tab: indent</span><span>Shift+Tab: unindent</span><span>Ctrl+/: comment</span><span>Auto-close: () [] {"{}"}</span>
       </div>
-      <div style={{display:"flex",height:340,overflow:"hidden"}}>
+      <div style={{display:"flex",height:340,overflow:"hidden",minHeight:340}}>
         {/* Line numbers */}
         <div style={{...sharedTextStyle,padding:"10px 8px 10px 10px",color:C.muted,background:`${C.bg}88`,borderRight:`1px solid ${C.border}`,flexShrink:0,minWidth:40,textAlign:"right",userSelect:"none",overflowY:"hidden"}}>
           {Array.from({length:lineCount},(_,i)=>i+1).map(n=><div key={n}>{n}</div>)}
@@ -1052,7 +1084,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
   const [results,setResults]=useState<any>(null);
   const [running,setRunning]=useState(false);
   const [runErr,setRunErr]=useState("");
-  const myBest=data.codingSubmissions?.[user.username]?.[cq.id]?.score??null;
+  const myBest=(data.codingSubmissions||{})?.[user.username]?.[cq.id]?.score??null;
 
   const switchLang=(l:string)=>{
     setLang(l);
@@ -1067,7 +1099,8 @@ function CodingView({cq,user,data,upd,onBack}:any){
       res=await runWithJudge0(code,lang,cq.testCases||[]);
       setResults(res);
       const passed=res.filter((r:any)=>r.pass).length;
-      const score=cq.testCases?.length?Math.round((passed/cq.testCases.length)*100):0;
+      const tcLen=(cq.testCases||[]).length;
+const score=tcLen>0?Math.round((passed/tcLen)*100):0;
       if(score>(myBest??-1)){
         upd((d:any)=>({...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score,code,lang,timestamp:new Date().toISOString()}}}}));
       }
@@ -1125,7 +1158,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
                 </Btn>
               </div>
             </div>
-            {runErr&&<div style={{...cardS,borderLeft:`3px solid ${C.red}`,color:C.red,fontSize:13}}>⚠ {runErr}</div>}
+            {runErr&&<div style={{...cardS,borderLeft:`3px solid ${C.red}`,color:C.red,fontSize:13}}><strong>⚠ Error:</strong> {runErr}<div style={{marginTop:6,fontSize:12,color:C.muted}}>If this persists, Judge0 may be temporarily unavailable. Try again in a moment.</div></div>}
             {running&&!results&&(
               <div style={{...cardS,textAlign:"center",padding:"1.5rem",color:C.muted,fontSize:13}}>
                 <div style={{marginBottom:8,fontSize:20}}>⏳</div>
@@ -1176,7 +1209,19 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
         return item;
       });
     };
-    return{...d,resources:clone(d.resources||[])};
+    // Also search top-level and nested children
+    const deepClone=(items:any[]):any[]=>{
+      return items.map(item=>{
+        if(item.id===node.id)return fn(item);
+        if(item.isFolder){
+          const newChildren=deepClone(item.children||[]);
+          const newItems=(item.items||[]);
+          return{...item,children:newChildren,items:newItems};
+        }
+        return item;
+      });
+    };
+    return{...d,resources:deepClone(d.resources||[])};
   });
 
   const removeFromParent=()=>upd((d:any)=>{
@@ -1307,14 +1352,12 @@ function OfficersPage({data,upd,isDev}:any){
   },[]);
 
   const markResolved=async(id:string,resolved:boolean)=>{
-    const fdoc=doc;
-    await updateDoc(fdoc(db,"bugReports",id),{resolved});
+    await updateDoc(doc(db,"bugReports",id),{resolved});
     setBugReports((prev:any)=>prev.map((r:any)=>r.id===id?{...r,resolved}:r));
   };
 
   const deleteReport=async(id:string)=>{
-    const fdoc=doc;
-    await deleteDoc(fdoc(db,"bugReports",id));
+    await deleteDoc(doc(db,"bugReports",id));
     setBugReports((prev:any)=>prev.filter((r:any)=>r.id!==id));
   };
 
@@ -1488,7 +1531,7 @@ function OfficerImgPick({image,onPick}:any){
   return(
     <div style={{marginBottom:8}}>
       <button type="button" onClick={()=>ref.current.click()} style={{background:C.bgInput,border:`1px dashed ${C.border}`,color:C.muted,padding:"5px 10px",borderRadius:6,cursor:"pointer",fontSize:12,width:"100%"}}>{image?"Change photo":"Upload photo"}</button>
-      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0])onPick(await toB64(e.target.files[0]));}}/>
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){alert(err.message);}}}}/>
     </div>
   );
 }
@@ -1514,7 +1557,7 @@ function AboutPage({data,upd,isOfficer}:any){
       </div>
       <div style={{...cardS,marginBottom:20}}>
         {editing?(<><label style={lbl}>Heading</label><input style={{...inp,marginBottom:12}} value={draft.heading} onChange={(e:any)=>setDraft((d:any)=>({...d,heading:e.target.value}))}/><label style={lbl}>Body text</label><textarea style={{...inp,minHeight:140,resize:"vertical"}} value={draft.body} onChange={(e:any)=>setDraft((d:any)=>({...d,body:e.target.value}))}/></>)
-        :(<><h3 style={{fontFamily:"'Georgia',serif",fontSize:20,fontWeight:400,marginTop:0,marginBottom:12,color:C.orange}}>{about.heading}</h3>{about.body.split("\n").map((line:string,i:number)=>line?<p key={i} style={{margin:"0 0 10px",lineHeight:1.7}}>{line}</p>:<br key={i}/>)}</>)}
+        :(<><h3 style={{fontFamily:"'Georgia',serif",fontSize:20,fontWeight:400,marginTop:0,marginBottom:12,color:C.orange}}>{about.heading}</h3>{(about.body||'').split("\n").map((line:string,i:number)=>line?<p key={i} style={{margin:"0 0 10px",lineHeight:1.7}}>{line}</p>:<br key={i}/>)}</>)}
       </div>
       <div style={{marginBottom:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -1544,7 +1587,7 @@ function AboutPage({data,upd,isOfficer}:any){
                 <OfficerImgPick image={o.image} onPick={(v:string)=>{const os=[...draft.officers];os[i]={...os[i],image:v};setDraft((d:any)=>({...d,officers:os}));}}/>
                 <input style={{...inp,marginBottom:6,textAlign:"center",fontSize:13}} value={o.name} placeholder="Name" onChange={(e:any)=>{const os=[...draft.officers];os[i]={...os[i],name:e.target.value};setDraft((d:any)=>({...d,officers:os}));}}/>
                 <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
-                  {["Officer","President"].map(r=><button key={r} type="button" onClick={()=>{const os=[...draft.officers];os[i]={...os[i],role:r};setDraft((d:any)=>({...d,officers:os}));}} style={{flex:1,padding:"7px 0",fontSize:12,fontWeight:o.role===r?700:400,border:"none",cursor:"pointer",background:o.role===r?C.orange:C.bgInput,color:o.role===r?"#fff":C.muted,transition:"all 0.15s"}}>{r}</button>)}
+                  {["Officer","Vice President","President"].map(r=><button key={r} type="button" onClick={()=>{const os=[...draft.officers];os[i]={...os[i],role:r};setDraft((d:any)=>({...d,officers:os}));}} style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:o.role===r?700:400,border:"none",cursor:"pointer",background:o.role===r?C.orange:C.bgInput,color:o.role===r?"#fff":C.muted,transition:"all 0.15s"}}>{r}</button>)}
                 </div>
                 <button onClick={()=>setDraft((d:any)=>({...d,officers:d.officers.filter((_:any,j:number)=>j!==i)}))} style={{marginTop:6,background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12}}>Remove</button>
               </>):(<><div style={{fontWeight:600,fontSize:14}}>{o.name||"—"}</div><div style={{fontSize:12,color:C.orange,marginTop:2}}>{o.role}</div></>)}
@@ -1566,8 +1609,8 @@ function AboutPage({data,upd,isOfficer}:any){
 }
 
 function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
-  const probs=unit.problemIds.map((id:any)=>data.problems.find((p:any)=>p.id===id)).filter(Boolean);
-  const myCompleted=user?(data.completions[user.username]||[]):[];
+  const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
+  const myCompleted=user?((data.completions||{})[user.username]||[]):[];
   const startUnit=()=>{
     if(!probs.length)return;
     const go=(idx:number)=>{if(idx>=probs.length){onFinish?onFinish():onBack();return;}onProblem(probs[idx].id,{unitTitle:unit.title,index:idx,total:probs.length,onNext:()=>go(idx+1)});};
@@ -1582,11 +1625,11 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
           {unit.desc&&<p style={{color:C.muted,margin:"0 0 16px",fontSize:14}}>{unit.desc}</p>}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:13,color:C.muted}}>{probs.length} problems · {probs.filter((p:any)=>myCompleted.includes(p.id)).length} solved</span>
+            <span style={{fontSize:13,color:C.muted}}>{probs.length} problems · {probs.filter((p:any)=>myCompleted.some((id:any)=>String(id)===String(p.id))).length} solved</span>
             <Btn onClick={startUnit}>Start unit →</Btn>
           </div>
         </div>
-        {probs.map((p:any,i:number)=>{const done=myCompleted.includes(p.id);return(
+        {probs.map((p:any,i:number)=>{const done=myCompleted.some((id:any)=>String(id)===String(p.id));return(
           <div key={p.id} style={{...cardS,display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${done?C.green:C.border}`,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:done?"#fff":C.muted,flexShrink:0}}>{done?"✓":i+1}</div>
             <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}><span style={{fontWeight:600}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag></div>
@@ -1601,7 +1644,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
   const [selected,setSelected]=useState<any>(null);
   const [submitted,setSubmitted]=useState(false);
   const [result,setResult]=useState<any>(null);
-  const completed=(data.completions[user.username]||[]).includes(prob.id);
+  const completed=((data.completions||{})[user.username]||[]).some((id:any)=>String(id)===String(prob.id));
   const submit=()=>{
     if(selected===null)return;
     const correct=selected===prob.answer;
@@ -1668,12 +1711,12 @@ function LeaderboardPage({data,user}:any){
   const [lbTab,setLbTab]=useState("solved");
   const medal=(i:number)=>i===0?C.orange:i===1?C.blue:C.muted;
   const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.blue}44`:C.border;
-  const solvedRows=[...data.users].map((u:any)=>({name:u.name||u.username,username:u.username,value:(data.completions[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
+  const solvedRows=[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,value:(data.completions[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
   const accuracyRows=[...data.users].map((u:any)=>{const a=data.attempts[u.username]||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
   const streakRows=[...data.users].map((u:any)=>{const s=data.streaks[u.username]||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
   // Coding: count unique coding questions where best score === 100
   const codingRows=[...data.users].map((u:any)=>{
-    const subs=data.codingSubmissions?.[u.username]||{};
+    const subs=((data.codingSubmissions||{})||{})[u.username]||{};
     const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
     const best=Object.values(subs).reduce((acc:number,s:any)=>acc+(s.score||0),0);
     const total=Object.values(subs).length;
@@ -1705,15 +1748,11 @@ function LeaderboardPage({data,user}:any){
 function ModalBox({modal,setModal,data,upd,isDev}:any){
   const isEditUnit=modal&&modal.type==="editUnit";
   const isEditCodingQ=modal&&modal.type==="editCodingQ";
-  const isImportSheet=modal==="importSheet";
   const editUnit=isEditUnit?modal.unit:null;
   const editCQ=isEditCodingQ?modal.cq:null;
   const [selProbs,setSelProbs]=useState(editUnit?[...editUnit.problemIds]:[]);
   const [f,setF]=useState<any>({difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
   const [cqForm,setCqForm]=useState<any>(editCQ?{...editCQ,testCases:[...(editCQ.testCases||[])],starterCodes:editCQ.starterCodes||{}}:{title:"",difficulty:"Easy",language:"Java",desc:"",starterCodes:{},testCases:[{input:"",expected:""}]});
-  const [sheetUrl,setSheetUrl]=useState("");
-  const [importing,setImporting]=useState(false);
-  const [importErr,setImportErr]=useState("");
   const set=(patch:any)=>setF((prev:any)=>({...prev,...patch}));
   const setChoice=(i:number,v:string)=>setF((p:any)=>{const c=[...p.choices];c[i]=v;return{...p,choices:c};});
   const toggleProb=(id:any)=>setF((p:any)=>({...p,selectedProblemIds:p.selectedProblemIds.includes(id)?p.selectedProblemIds.filter((x:any)=>x!==id):[...p.selectedProblemIds,id]}));
@@ -1801,126 +1840,63 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     );
   }
 
-  if(isImportSheet){
-    // Parse a single CSV row handling quoted fields with commas inside
-    const parseCSVRow=(row:string):string[]=>{
-      const result:string[]=[];
-      let cur="",inQuote=false;
-      for(let i=0;i<row.length;i++){
-        const ch=row[i];
-        if(ch==='"'){inQuote=!inQuote;}
-        else if(ch===","&&!inQuote){result.push(cur.trim());cur="";}
-        else{cur+=ch;}
-      }
-      result.push(cur.trim());
-      return result.map(s=>s.replace(/^"|"$/g,"").trim());
-    };
-
-    const doImport=async()=>{
-      setImporting(true);setImportErr("");
-      try{
-        const raw=sheetUrl.trim();
-        const match=raw.match(/\/d\/([\w-]+)/);
-        if(!match)throw new Error("Invalid URL. Paste the full Google Sheets URL.");
-        const sheetId=match[1];
-        const gidMatch=raw.match(/[#&?]gid=(\d+)/);
-        const gid=gidMatch?gidMatch[1]:"0";
-        // Try multiple CORS proxy strategies
-        const exportUrl=`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
-        const proxies=[
-          `https://api.allorigins.win/raw?url=${encodeURIComponent(exportUrl)}`,
-          `https://corsproxy.io/?${encodeURIComponent(exportUrl)}`,
-          exportUrl, // direct last resort
-        ];
-        let text="";
-        let lastErr="";
-        for(const url of proxies){
-          try{
-            const r=await fetch(url,{headers:{Accept:"text/csv,text/plain,*/*"}});
-            if(!r.ok){lastErr=`HTTP ${r.status}`;continue;}
-            const t=await r.text();
-            if(t.includes("<!DOCTYPE")||t.includes("<html")){lastErr="Got HTML (sheet may not be public)";continue;}
-            if(t.trim().length===0){lastErr="Empty response";continue;}
-            text=t;break;
-          }catch(fe:any){lastErr=fe.message;continue;}
-        }
-        if(!text)throw new Error(`Could not fetch sheet: ${lastErr}. Ensure File → Share → "Anyone with the link" is set to Viewer.`);
-        const lines=text.split(/\r?\n/).filter((l:string)=>l.trim());
-        if(lines.length<2)throw new Error("Sheet has no data rows (only a header or is empty).");
-        const rows=lines.slice(1);
-        let cnt=0;
-        const newProbs=rows.map((row:string)=>{
-          const cols=parseCSVRow(row);
-          // Allow flexible column count — need at least Title,Difficulty,Question,A,B,C,D,Answer
-          if(cols.length<8)return null;
-          const title=cols[0],difficulty=cols[1],desc=cols[2],a=cols[3],b=cols[4],c=cols[5],d=cols[6],ansRaw=cols[7];
-          if(!title.trim()||!desc.trim())return null;
-          let answer=parseInt(ansRaw.trim());
-          if(isNaN(answer)){
-            const m:any={"A":0,"B":1,"C":2,"D":3};
-            answer=m[ansRaw.trim().toUpperCase()]??0;
-          }
-          cnt++;
-          const diff=["Easy","Medium","Hard"].find(x=>x.toLowerCase()===difficulty.trim().toLowerCase())||"Easy";
-          return{id:Date.now()+cnt,title:title.trim(),difficulty:diff,desc:desc.trim(),choices:[a.trim(),b.trim(),c.trim(),d.trim()],answer:Math.min(Math.max(answer,0),3)};
-        }).filter(Boolean);
-        if(newProbs.length===0)throw new Error(`Parsed ${rows.length} row(s) but none were valid. Check columns: Title | Difficulty | Question | A | B | C | D | Answer`);
-        upd((d:any)=>({...d,problems:[...d.problems,...newProbs]}));
-        setImportErr(`✓ Imported ${newProbs.length} question${newProbs.length!==1?"s":""}!`);
-        setTimeout(()=>close(),1200);
-      }catch(e:any){setImportErr(e.message);}
-      setImporting(false);
-    };
-    return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480}} onClick={(e:any)=>e.stopPropagation()}>
-          <h3 style={{margin:"0 0 8px",fontSize:16}}>↓ Import from Google Sheets</h3>
-          <p style={{color:C.muted,fontSize:13,margin:"0 0 10px"}}>Sheet must be set to <strong>Anyone with the link can view</strong> (File → Share).</p>
-          <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.green,marginBottom:6}}>Row 1 (header, skipped):</div>
-          <div style={{background:C.bgInput,borderRadius:6,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.text,marginBottom:10}}>Title | Difficulty | Question | A | B | C | D | Answer</div>
-          <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"8px 10px",fontSize:12,color:C.blue,marginBottom:12}}>
-            <div><strong>Difficulty:</strong> Easy, Medium, or Hard</div>
-            <div><strong>Answer:</strong> 0–3 (0=A, 1=B, 2=C, 3=D) or A/B/C/D</div>
-            <div style={{marginTop:4}}>Cells with commas must be wrapped in quotes in the sheet.</div>
-          </div>
-          <label style={lbl}>Google Sheets URL</label>
-          <input style={{...inp,marginBottom:10}} value={sheetUrl} onChange={(e:any)=>setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..."/>
-          {importErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 10px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {importErr}</div>}
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={doImport} disabled={importing||!sheetUrl.trim()}>{importing?"Importing…":"Import"}</Btn></div>
-        </div>
-      </div>
-    );
-  }
-
-  const submit=()=>{
-    if(modal==="ann"){if(!f.title||!f.body)return;upd((d:any)=>({...d,announcements:[...d.announcements,{id:Date.now(),title:f.title,body:f.body,date:new Date().toISOString().slice(0,10),image:f.image||""}]}));}
-    else if(modal==="evt"){if(!f.title||!f.date)return;upd((d:any)=>({...d,events:[...d.events,{id:Date.now(),title:f.title,date:f.date,time:f.time||"TBD",location:f.location||"TBD",desc:f.desc||"",image:f.image||""}]}));}
-    else if(modal==="prob"){if(!f.title||!f.desc||f.choices.some((c:string)=>!c))return;upd((d:any)=>({...d,problems:[...d.problems,{id:Date.now(),title:f.title,difficulty:f.difficulty,desc:f.desc,choices:f.choices,answer:Number(f.answer)}]}));}
-    else if(modal==="unit"){if(!f.title||!f.selectedProblemIds.length)return;upd((d:any)=>({...d,units:[...d.units,{id:Date.now(),title:f.title,desc:f.desc||"",problemIds:f.selectedProblemIds}]}));}
-    close();
+    const submit=()=>{
+    if(selected===null)return;
+    const correct=selected===prob.answer;
+    setResult(correct);setSubmitted(true);
+    upd((d:any)=>{
+      const today=new Date().toISOString().slice(0,10);
+      const ua=d.attempts[user.username]||{total:0,correct:0};
+      const na={total:ua.total+1,correct:ua.correct+(correct?1:0)};
+      const s=d.streaks[user.username]||{lastDate:null,current:0,best:0};
+      let ns={...s};
+      if(correct){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+        if(s.lastDate===today){}else if(s.lastDate===yesterday){ns.current=s.current+1;ns.lastDate=today;}else{ns.current=1;ns.lastDate=today;}
+        if(ns.current>ns.best)ns.best=ns.current;}
+      const completions=correct&&!completed?{...d.completions,[user.username]:[...(d.completions[user.username]||[]),prob.id]}:d.completions;
+      return{...d,completions,attempts:{...d.attempts,[user.username]:na},streaks:{...d.streaks,[user.username]:ns}};
+    });
   };
-  const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit"};
-  const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","evt"].includes(modal)?520:430,maxHeight:"88vh",overflowY:"auto"};
   return(
-    <div style={overlay} onClick={close}>
-      <div style={box} onClick={(e:any)=>e.stopPropagation()}>
-        <h3 style={{margin:"0 0 16px",fontSize:16}}>{titles[modal]}</h3>
-        {modal==="ann"&&<><label style={lbl}>Title</label><input style={{...inp,marginBottom:10}} value={f.title} onChange={(e:any)=>set({title:e.target.value})}/><label style={lbl}>Body</label><textarea style={{...inp,height:80,resize:"vertical",marginBottom:10}} value={f.body} onChange={(e:any)=>set({body:e.target.value})}/><ImgPick preview={f.image} onPick={(v:string)=>set({image:v})}/></>}
-        {modal==="evt"&&<>
-          <label style={lbl}>Title</label><input style={{...inp,marginBottom:12}} value={f.title} onChange={(e:any)=>set({title:e.target.value})}/>
-          <label style={lbl}>Date</label><div style={{marginBottom:12}}><DatePicker value={f.date} onChange={(v:string)=>set({date:v})}/></div>
-          <label style={lbl}>Time</label><div style={{marginBottom:12}}><TimePicker value={f.time} onChange={(v:string)=>set({time:v})}/></div>
-          <label style={lbl}>Location</label><input style={{...inp,marginBottom:10}} value={f.location} onChange={(e:any)=>set({location:e.target.value})}/>
-          <label style={lbl}>Description</label><input style={{...inp,marginBottom:10}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})}/>
-          <ImgPick preview={f.image} onPick={(v:string)=>set({image:v})}/>
-        </>}
-        {modal==="prob"&&<><label style={lbl}>Problem title</label><input style={{...inp,marginBottom:10}} value={f.title} onChange={(e:any)=>set({title:e.target.value})}/><label style={lbl}>Difficulty</label><select style={{...inp,marginBottom:10}} value={f.difficulty} onChange={(e:any)=>set({difficulty:e.target.value})}><option>Easy</option><option>Medium</option><option>Hard</option></select><label style={lbl}>Question</label><textarea style={{...inp,height:72,resize:"vertical",marginBottom:14}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})}/><label style={lbl}>Answer choices — select the correct one</label>{[0,1,2,3].map(i=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><input type="radio" name="ans" checked={Number(f.answer)===i} onChange={()=>set({answer:i})} style={{accentColor:C.orange,flexShrink:0}}/><div style={{width:24,height:24,borderRadius:"50%",background:`${C.orange}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.orange,flexShrink:0}}>{String.fromCharCode(65+i)}</div><input style={inp} value={f.choices[i]} placeholder={`Choice ${String.fromCharCode(65+i)}`} onChange={(e:any)=>setChoice(i,e.target.value)}/></div>))}</>}
-        {modal==="unit"&&<><label style={lbl}>Unit title</label><input style={{...inp,marginBottom:10}} value={f.title} placeholder="e.g. Intro to Data Structures" onChange={(e:any)=>set({title:e.target.value})}/><label style={lbl}>Description (optional)</label><input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/><label style={lbl}>Select problems</label><div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:12}}>{data.problems.length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet.</p>}{data.problems.map((p:any)=>{const sel=f.selectedProblemIds.includes(p.id);return(<div key={p.id} onClick={()=>toggleProb(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}><div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div><span style={{flex:1,fontSize:14}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag></div>);})}</div>{f.selectedProblemIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length>1?"s":""} selected</p>}</>}
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
-          <OutBtn onClick={close}>Cancel</OutBtn>
-          <Btn onClick={submit}>{modal==="unit"?"Create unit":"Add"}</Btn>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
+      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+      {unitCtx&&<div style={{background:"#111827",padding:"8px 1.5rem",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:13,color:C.muted}}>{unitCtx.unitTitle}</span><span style={{fontSize:12,color:C.muted}}>·</span>
+        <span style={{fontSize:13,color:C.orange,fontWeight:600}}>Question {unitCtx.index+1} of {unitCtx.total}</span>
+        <div style={{flex:1,height:4,background:C.border,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${((unitCtx.index+1)/unitCtx.total)*100}%`,background:C.orange,borderRadius:2}}/></div>
+      </div>}
+      <div style={{maxWidth:600,margin:"0 auto",padding:"2rem 1rem"}}>
+        <OutBtn onClick={onBack} style={{marginBottom:20}}>← {unitCtx?unitCtx.unitTitle:"Back"}</OutBtn>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <span style={{fontWeight:700,fontSize:20}}>{prob.title}</span>
+          <Tag c={diffColor[prob.difficulty]}>{prob.difficulty}</Tag>
+          {completed&&!submitted&&<Tag c={C.green}>Already solved</Tag>}
         </div>
+        <div style={{...cardS,fontSize:16,lineHeight:1.7,marginBottom:20}}>{prob.desc}</div>
+        <div style={{marginBottom:24}}>
+          {prob.choices.map((ch:string,i:number)=>{
+            let bg=C.bgCard,border=C.border,color=C.text;
+            if(submitted){if(i===prob.answer){bg=`${C.green}22`;border=C.green;color=C.green;}else if(i===selected){bg=`${C.red}22`;border=C.red;color=C.red;}}
+            else if(selected===i){bg=`${C.orange}22`;border=C.orange;color=C.orange;}
+            return(<div key={i} onClick={()=>!submitted&&setSelected(i)} style={{background:bg,border:`1.5px solid ${border}`,color,borderRadius:8,padding:"12px 16px",marginBottom:10,cursor:submitted?"default":"pointer",display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:26,height:26,borderRadius:"50%",border:`1.5px solid ${border}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,flexShrink:0,color}}>{String.fromCharCode(65+i)}</div>
+              <span style={{fontSize:15}}>{ch}</span>
+              {submitted&&i===prob.answer&&<span style={{marginLeft:"auto",fontWeight:700}}>✓ Correct</span>}
+              {submitted&&i===selected&&i!==prob.answer&&<span style={{marginLeft:"auto",fontWeight:700}}>✗ Wrong</span>}
+            </div>);
+          })}
+        </div>
+        {!submitted?<Btn disabled={selected===null} onClick={submit} style={{padding:"10px 28px"}}>Submit answer</Btn>:(
+          <div>
+            <div style={{background:result?`${C.green}22`:`${C.red}22`,border:`1px solid ${result?C.green:C.red}`,borderRadius:8,padding:"12px 16px",marginBottom:16,color:result?C.green:C.red,fontWeight:600}}>
+              {result?"Correct! +1 added to your score. 🎉":"Not quite — the correct answer is highlighted above."}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <OutBtn onClick={onBack}>{unitCtx?"Back to unit":"Back to problems"}</OutBtn>
+              {unitCtx&&onNext&&<Btn onClick={onNext}>{unitCtx.index+1<unitCtx.total?"Next question →":"Finish unit ✓"}</Btn>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
