@@ -35,7 +35,7 @@ const LANG_IDS:any={"Python":71,"Java":62,"C++":54};
 // Convert JS-style test case input to the target language's syntax
 // JS uses single quotes for strings: 'hello' -> Java/C++ need "hello"
 function convertInput(input:string,lang:string):string{
-  if(lang==="JavaScript"||lang==="Python") return input;
+  if(lang==="Python") return input; // Python accepts single quotes natively
   // For Java and C++: replace single-quoted strings with double-quoted
   // e.g. 'hello' -> "hello", '' -> ""
   return input.replace(/'([^']*)'/g,(_:string,s:string)=>`"${s}"`);
@@ -96,19 +96,7 @@ async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<an
   return results;
 }
 
-function runCodeJS(code:string,testCases:any[]){
-  return testCases.map(tc=>{
-    try{
-      const fn=new Function(code+`\nreturn solution(${tc.input});`);
-      const result=fn();
-      const got=JSON.stringify(result);
-      const expected=tc.expected.trim();
-      let pass=false;
-      try{pass=JSON.stringify(JSON.parse(expected))===got;}catch{pass=String(result)===expected.replace(/^['"]|['"]$/g,"");}
-      return{input:tc.input,expected:tc.expected,got:String(result),pass};
-    }catch(e:any){return{input:tc.input,expected:tc.expected,got:`Error: ${e.message}`,pass:false};}
-  });
-}
+
 
 function DatePicker({value,onChange}:any){
   const today=new Date();
@@ -187,18 +175,18 @@ const initData:any={
     {id:5,title:"Sorting",difficulty:"Hard",desc:"What is the average time complexity of quicksort?",choices:["O(n)","O(n log n)","O(n²)","O(log n)"],answer:1},
   ],
   codingQuestions:[
-    {id:1,title:"Sum Two Numbers",difficulty:"Easy",language:"JavaScript",
+    {id:1,title:"Sum Two Numbers",difficulty:"Easy",language:"Java",
       desc:"Write a function called `solution` that takes two numbers and returns their sum.\n\nExample: solution(2, 3) → 5",
-      starterCode:"function solution(a, b) {\n  // your code here\n}",
+      starterCodes:{"Java":"static int solution(int a, int b) {\n    // your code here\n    return 0;\n}","Python":"def solution(a, b):\n    # your code here\n    return 0","C++":"auto solution(int a, int b) {\n    // your code here\n    return 0;\n}"},
       testCases:[{input:"2,3",expected:"5"},{input:"0,0",expected:"0"},{input:"-1,1",expected:"0"},{input:"10,20",expected:"30"}]},
-    {id:2,title:"Reverse a String",difficulty:"Easy",language:"JavaScript",
+    {id:2,title:"Reverse a String",difficulty:"Easy",language:"Java",
       desc:"Write a function called `solution` that takes a string and returns it reversed.\n\nExample: solution('hello') → 'olleh'",
-      starterCode:"function solution(s) {\n  // your code here\n}",
-      testCases:[{input:"'hello'",expected:"'olleh'"},{input:"'world'",expected:"'dlrow'"},{input:"''",expected:"''"},{input:"'a'",expected:"'a'"}]},
-    {id:3,title:"Is Palindrome",difficulty:"Medium",language:"JavaScript",
+      starterCodes:{"Java":"static String solution(String s) {\n    // your code here\n    return \"\";\n}","Python":"def solution(s):\n    # your code here\n    return \"\"","C++":"string solution(string s) {\n    // your code here\n    return s;\n}"},
+      testCases:[{input:'"\"hello\""',expected:'"\"olleh\""',{input:'"\"world\""',expected:'"\"dlrow\""'},{input:"'a'",expected:"'a'"}]},
+    {id:3,title:"Is Palindrome",difficulty:"Medium",language:"Java",
       desc:"Write a function called `solution` that returns true if a string is a palindrome, false otherwise.\n\nExample: solution('racecar') → true",
-      starterCode:"function solution(s) {\n  // your code here\n}",
-      testCases:[{input:"'racecar'",expected:"true"},{input:"'hello'",expected:"false"},{input:"'level'",expected:"true"},{input:"'a'",expected:"true"}]},
+      starterCodes:{"Java":"static boolean solution(String s) {\n    // your code here\n    return false;\n}","Python":"def solution(s):\n    # your code here\n    return False","C++":"bool solution(string s) {\n    // your code here\n    return false;\n}"},
+      testCases:[{input:'"\"racecar\""',expected:"true"},{input:'"hello"',expected:"false"},{input:'"level"',expected:"true"},{input:'"a"',expected:"true"}]},
   ],
   units:[{id:1,title:"Intro to CS Concepts",desc:"Foundational concepts every CS student should know.",problemIds:[1,2,3]}],
   completions:{},codingSubmissions:{},attempts:{},streaks:{},
@@ -278,7 +266,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
   const [newBody,setNewBody]=useState("");
   const [showNew,setShowNew]=useState(false);
   const [loading,setLoading]=useState(true);
-  const [formErr,setFormErr]=useState("");
+  const [formErr,setFormErr]=useState<string>("");
   const [editingThread,setEditingThread]=useState<any>(null);
   const [editTitle,setEditTitle]=useState("");
   const [editBody,setEditBody]=useState("");
@@ -742,7 +730,7 @@ export default function App(){
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
-                {[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,count:(data.completions[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>(
+                {[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,count:((data.completions||{})[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
                     <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.blue}44`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.blue:C.muted,flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
@@ -848,7 +836,7 @@ export default function App(){
                 {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
                 {(data.units||[]).map((unit:any)=>{
                   const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
-                  const solved=probs.filter((p:any)=>myCompleted.some((id:any)=>String(id)===String(p.id))).length;
+                  const solved=probs.filter((p:any)=>(myCompleted||[]).some((id:any)=>String(id)===String(p.id))).length;
                   return(
                     <div key={unit.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveUnit(unit.id)}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -943,7 +931,7 @@ export default function App(){
         {page==="members"&&isDev&&(
           <div>
             <h2>Manage Members</h2>
-            {data.users.filter((u:any)=>u.username!==DEV_ACCOUNT.username).map((u:any)=>(
+            {(data.users||[]).filter((u:any)=>u.username!==DEV_ACCOUNT.username).map((u:any)=>(
               <div key={u.username} style={{...cardS,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <span style={{fontWeight:600}}>{u.name||u.username}</span>
@@ -1149,7 +1137,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
   const [results,setResults]=useState<any>(null);
   const [running,setRunning]=useState(false);
   const [runErr,setRunErr]=useState("");
-  const myBest=(data.codingSubmissions||{})?.[user.username]?.[cq.id]?.score??null;
+  const myBest=((data.codingSubmissions||{})[user?.username]||{})[cq.id]?.score??null;
 
   const switchLang=(l:string)=>{
     setLang(l);
@@ -1290,8 +1278,8 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
   });
 
   const removeFromParent=()=>upd((d:any)=>{
-    const remove=(items:any[]):any[]=>items.filter((x:any)=>x.id!==node.id).map((item:any)=>
-      item.isFolder?{...item,children:remove(item.children||[])}:item
+    const remove=(items:any[]):any[]=>items.filter((x:any)=>String(x.id)!==String(node.id)).map((item:any)=>
+      item.isFolder?{...item,children:remove(item.children||[]),items:item.items||[]}:item
     );
     return{...d,resources:remove(d.resources||[])};
   });
@@ -1466,7 +1454,7 @@ function OfficersPage({data,upd,isDev}:any){
                   {t.dueDate&&<div style={{fontSize:11,color:overdue?C.red:C.muted,marginTop:3}}>Due {t.dueDate}{overdue?" — Overdue":""}</div>}
                   {(t.assignees||[]).length>0&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>👤 {t.assignees.join(", ")}</div>}
                 </div>
-                {isDev&&<button onClick={(e:any)=>{e.stopPropagation();upd((d:any)=>({...d,officerTasks:(d.officerTasks||[]).filter((x:any)=>x.id!==t.id)}));}} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0}}>×</button>}
+                {isDev&&<button onClick={(e:any)=>{e.stopPropagation();if(window.confirm("Remove this task?"))upd((d:any)=>({...d,officerTasks:(d.officerTasks||[]).filter((x:any)=>String(x.id)!==String(t.id))}));}} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0}}>×</button>}
               </div>
             );
           })}
@@ -1481,7 +1469,7 @@ function OfficersPage({data,upd,isDev}:any){
               <div key={e.id} style={{...cardS,borderLeft:`3px solid ${C.green}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div><div style={{fontWeight:600,fontSize:14}}>{e.title}</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>{e.date}{e.time?` · ${e.time}`:""}</div>{e.desc&&<div style={{fontSize:13,color:C.text,marginTop:4}}>{e.desc}</div>}</div>
-                  {isDev&&<button onClick={()=>upd((d:any)=>({...d,officerEvents:(d.officerEvents||[]).filter((x:any)=>x.id!==e.id)}))} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0,flexShrink:0}}>×</button>}
+                  {isDev&&<button onClick={()=>upd((d:any)=>({...d,officerEvents:(d.officerEvents||[]).filter((x:any)=>String(x.id)!==String(e.id))}))} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0,flexShrink:0}}>×</button>}
                 </div>
               </div>
             ))}
@@ -1492,7 +1480,7 @@ function OfficersPage({data,upd,isDev}:any){
               <div key={e.id} style={{...cardS,opacity:0.6}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div><div style={{fontWeight:600,fontSize:14}}>{e.title}</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>{e.date}{e.time?` · ${e.time}`:""}</div>{e.desc&&<div style={{fontSize:13,marginTop:4}}>{e.desc}</div>}</div>
-                  {isDev&&<button onClick={()=>upd((d:any)=>({...d,officerEvents:(d.officerEvents||[]).filter((x:any)=>x.id!==e.id)}))} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0,flexShrink:0}}>×</button>}
+                  {isDev&&<button onClick={()=>upd((d:any)=>({...d,officerEvents:(d.officerEvents||[]).filter((x:any)=>String(x.id)!==String(e.id))}))} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0,flexShrink:0}}>×</button>}
                 </div>
               </div>
             ))}
@@ -1761,12 +1749,12 @@ function LeaderboardPage({data,user}:any){
   const [lbTab,setLbTab]=useState("solved");
   const medal=(i:number)=>i===0?C.orange:i===1?C.blue:C.muted;
   const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.blue}44`:C.border;
-  const solvedRows=[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,value:(data.completions[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
-  const accuracyRows=[...data.users].map((u:any)=>{const a=data.attempts[u.username]||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
-  const streakRows=[...data.users].map((u:any)=>{const s=data.streaks[u.username]||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
+  const solvedRows=[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
+  const accuracyRows=[...(data.users||[])].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
+  const streakRows=[...(data.users||[])].map((u:any)=>{const s=((data.streaks||{})[u.username])||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
   // Coding: count unique coding questions where best score === 100
-  const codingRows=[...data.users].map((u:any)=>{
-    const subs=((data.codingSubmissions||{})||{})[u.username]||{};
+  const codingRows=[...(data.users||[])].map((u:any)=>{
+    const subs=((data.codingSubmissions||{})[u.username])||{};
     const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
     const best=Object.values(subs).reduce((acc:number,s:any)=>acc+(s.score||0),0);
     const total=Object.values(subs).length;
@@ -1817,7 +1805,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit problems</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editUnit.title}</p>
           <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
-            {data.problems.map((p:any)=>{const sel=selProbs.includes(p.id);return(
+            {(data.problems||[]).map((p:any)=>{const sel=selProbs.includes(p.id);return(
               <div key={p.id} onClick={()=>toggleSel(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{flex:1,fontSize:14}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
@@ -1897,7 +1885,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     );
   }
 
-  const [formErr,setFormErr]=useState("");
+  const [formErr,setFormErr]=useState<string>("");
   const submit=()=>{
     setFormErr("");
     if(modal==="ann"){
@@ -1975,7 +1963,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
           <label style={lbl}>Select problems <span style={{color:C.red}}>*</span></label>
           <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedProblemIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
-            {data.problems.length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet. Create some first.</p>}
+            {(data.problems||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet. Create some first.</p>}
             {(data.problems||[]).map((p:any)=>{const sel=f.selectedProblemIds.includes(p.id);return(
               <div key={p.id} onClick={()=>toggleProb(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
