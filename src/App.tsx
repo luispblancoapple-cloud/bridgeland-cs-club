@@ -527,12 +527,12 @@ function BugReportBtn({user}:any){
   return(
     <>
       <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:6}}>
-        🐛 Report a bug
+        Report a bug
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
           <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 8px",fontSize:16}}>🐛 Report a Bug</h3>
+            <h3 style={{margin:"0 0 8px",fontSize:16}}>Report a Bug</h3>
             <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Describe what went wrong and we'll look into it.</p>
             {sent?(
               <div style={{textAlign:"center",padding:"1.5rem",color:C.green,fontWeight:600,fontSize:15}}>✓ Report sent! Thanks!</div>
@@ -879,7 +879,7 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+                <div style={{background:`${C.blue}18`,border:`1px solid ${C.blue}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
                   💡 Select a language and write your solution.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
@@ -903,7 +903,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn color={C.orange} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
+                        <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
                           <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}));}}>Remove</OutBtn>
@@ -1197,13 +1197,16 @@ const score=tcLen>0?Math.round((passed/tcLen)*100):0;
                 <h3 style={{margin:0,fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Your Solution</h3>
                 <div style={{display:"flex",gap:4}}>
                   {LANGS.map(l=>(
-                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.orange:C.border}`,borderRadius:5,background:lang===l?`${C.orange}22`:"transparent",color:lang===l?C.orange:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
+                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.blue:C.border}`,borderRadius:5,background:lang===l?`${C.blue}22`:"transparent",color:lang===l?C.blue:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
                   ))}
                 </div>
               </div>
+              <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.blue,marginBottom:8}}>
+                May take a few seconds per test case.
+              </div>
               <CodeEditor code={code} onChange={setCode} lang={lang}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
-                <Btn color={C.orange} onClick={run} disabled={running} style={{minWidth:140}}>
+                <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:140}}>
                   {running?<span style={{display:"flex",alignItems:"center",gap:8}}><span style={{display:"inline-block",width:12,height:12,border:`2px solid #ffffff55`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Running…</span>:"▶ Run code"}
                 </Btn>
               </div>
@@ -1524,7 +1527,7 @@ function OfficersPage({data,upd,isDev}:any){
       {/* BUG REPORTS SECTION */}
       <div style={{marginTop:32}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-          <h2 style={{margin:0,fontSize:18}}>🐛 Bug Reports</h2>
+          <h2 style={{margin:0,fontSize:18}}>Bug Reports</h2>
           <div style={{display:"flex",gap:6}}>
             <button onClick={()=>setBugTab("open")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${bugTab==="open"?C.orange:C.border}`,borderRadius:6,background:bugTab==="open"?`${C.orange}22`:"transparent",color:bugTab==="open"?C.orange:C.muted,cursor:"pointer",fontWeight:bugTab==="open"?700:400}}>
               Open ({openBugs.length})
