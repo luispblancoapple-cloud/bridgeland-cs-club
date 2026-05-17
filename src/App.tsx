@@ -879,8 +879,8 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.blue}18`,border:`1px solid ${C.blue}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
-                  💡 Select a language and write your solution. Your code runs on Judge0 servers — results appear in seconds.
+                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+                  💡 Select a language and write your solution.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
                 {(data.codingQuestions||[]).map((cq:any)=>{
@@ -903,7 +903,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
+                        <Btn color={C.orange} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
                           <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}));}}>Remove</OutBtn>
@@ -1197,16 +1197,13 @@ const score=tcLen>0?Math.round((passed/tcLen)*100):0;
                 <h3 style={{margin:0,fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Your Solution</h3>
                 <div style={{display:"flex",gap:4}}>
                   {LANGS.map(l=>(
-                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.blue:C.border}`,borderRadius:5,background:lang===l?`${C.blue}22`:"transparent",color:lang===l?C.blue:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
+                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.orange:C.border}`,borderRadius:5,background:lang===l?`${C.orange}22`:"transparent",color:lang===l?C.orange:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
                   ))}
                 </div>
               </div>
-              <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.blue,marginBottom:8}}>
-                ☁ Runs on Judge0 cloud servers — may take a few seconds per test case.
-              </div>
               <CodeEditor code={code} onChange={setCode} lang={lang}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
-                <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:140}}>
+                <Btn color={C.orange} onClick={run} disabled={running} style={{minWidth:140}}>
                   {running?<span style={{display:"flex",alignItems:"center",gap:8}}><span style={{display:"inline-block",width:12,height:12,border:`2px solid #ffffff55`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Running…</span>:"▶ Run code"}
                 </Btn>
               </div>
