@@ -1584,28 +1584,59 @@ function AboutPage({data,upd,isOfficer}:any){
           ))}
         </div>
       </div>
-      <div style={{marginBottom:24}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <h3 style={{margin:0,fontSize:14,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Officers</h3>
-          {editing&&<SecBtn onClick={()=>setDraft((d:any)=>({...d,officers:[...(d.officers||[]),{name:"",role:"Officer",image:""}]}))} style={{fontSize:12,padding:"5px 12px"}}>+ Add officer</SecBtn>}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
-          {(about.officers||[]).map((o:any,i:number)=>(
-            <div key={i} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
-              {o.image?<img src={o.image} alt={o.name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.orange}`,margin:"0 auto 8px",display:"block"}}/>
-                :<div style={{width:56,height:56,borderRadius:"50%",background:`${C.orange}33`,border:`2px solid ${C.orange}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontWeight:700,fontSize:20,color:C.orange}}>{(o.name||"?")[0]}</div>}
-              {editing?(<>
-                <OfficerImgPick image={o.image} onPick={(v:string)=>{const os=[...draft.officers];os[i]={...os[i],image:v};setDraft((d:any)=>({...d,officers:os}));}}/>
-                <input style={{...inp,marginBottom:6,textAlign:"center",fontSize:13}} value={o.name} placeholder="Name" onChange={(e:any)=>{const os=[...draft.officers];os[i]={...os[i],name:e.target.value};setDraft((d:any)=>({...d,officers:os}));}}/>
-                <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
-                  {["Officer","Vice President","President"].map(r=><button key={r} type="button" onClick={()=>{const os=[...draft.officers];os[i]={...os[i],role:r};setDraft((d:any)=>({...d,officers:os}));}} style={{flex:1,padding:"6px 0",fontSize:11,fontWeight:o.role===r?700:400,border:"none",cursor:"pointer",background:o.role===r?C.orange:C.bgInput,color:o.role===r?"#fff":C.muted,transition:"all 0.15s"}}>{r}</button>)}
-                </div>
-                <button onClick={()=>setDraft((d:any)=>({...d,officers:d.officers.filter((_:any,j:number)=>j!==i)}))} style={{marginTop:6,background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12}}>Remove</button>
-              </>):(<><div style={{fontWeight:600,fontSize:14}}>{o.name||"—"}</div><div style={{fontSize:12,color:C.orange,marginTop:2}}>{o.role}</div></>)}
-            </div>
-          ))}
-        </div>
+<div style={{marginBottom:24}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+    <h3 style={{margin:0,fontSize:14,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Officers</h3>
+    {/* Updated default role to "Competition Lead" when adding a new person */}
+    {editing&&<SecBtn onClick={()=>setDraft((d:any)=>({...d,officers:[...(d.officers||[]),{name:"",role:"Competition Lead",image:""}]}))} style={{fontSize:12,padding:"5px 12px"}}>+ Add officer</SecBtn>}
+  </div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
+    {(about.officers||[]).map((o:any,i:number)=>(
+      <div key={i} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
+        {o.image?<img src={o.image} alt={o.name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.orange}`,margin:"0 auto 8px",display:"block"}}/>
+          : <div style={{width:56,height:56,borderRadius:"50%",background:`${C.orange}33`,border:`2px solid ${C.orange}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontWeight:700,fontSize:20,color:C.orange}}>{(o.name||"?")[0]}</div>}
+        
+        {editing?(<>
+          <OfficerImgPick image={o.image} onPick={(v:string)=>{const os=[...draft.officers];os[i]={...os[i],image:v};setDraft((d:any)=>({...d,officers:os}));}}/>
+          <input style={{...inp,marginBottom:6,textAlign:"center",fontSize:13}} value={o.name} placeholder="Name" onChange={(e:any)=>{const os=[...draft.officers];os[i]={...os[i],name:e.target.value};setDraft((d:any)=>({...d,officers:os}));}}/>
+          
+          {/* UPDATED: Now includes President, VP, and the two new Leads */}
+          <div style={{display:"flex",flexWrap:"wrap",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`}}>
+            {["President", "Vice President", "Competition Lead", "Workshop Lead"].map(r=>(
+              <button 
+                key={r} 
+                type="button" 
+                onClick={()=>{const os=[...draft.officers];os[i]={...os[i],role:r};setDraft((d:any)=>({...d,officers:os}));}} 
+                style={{
+                  flex:"1 1 50%", // This allows buttons to sit 2x2 if the space is tight
+                  padding:"6px 0",
+                  fontSize:10, // Slightly smaller font to ensure long titles fit
+                  fontWeight:o.role===r?700:400,
+                  border:"none",
+                  cursor:"pointer",
+                  background:o.role===r?C.orange:C.bgInput,
+                  color:o.role===r?"#fff":C.muted,
+                  transition:"all 0.15s",
+                  borderBottom: (r === "President" || r === "Vice President") ? `1px solid ${C.border}` : "none",
+                  borderRight: (r === "President" || r === "Competition Lead") ? `1px solid ${C.border}` : "none"
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          
+          <button onClick={()=>setDraft((d:any)=>({...d,officers:d.officers.filter((_:any,j:number)=>j!==i)}))} style={{marginTop:6,background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12}}>Remove</button>
+        </>):(
+          <>
+            <div style={{fontWeight:600,fontSize:14}}>{o.name||"—"}</div>
+            <div style={{fontSize:12,color:C.orange,marginTop:2}}>{o.role}</div>
+          </>
+        )}
       </div>
+    ))}
+  </div>
+</div>
       <div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <h3 style={{margin:0,fontSize:14,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Contact</h3>
