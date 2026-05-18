@@ -32,23 +32,17 @@ const LANGS=["Java","Python","C++"];
 
 const LANG_IDS:any={"Python":71,"Java":62,"C++":54};
 
-// Convert JS-style test case input to the target language's syntax
-// JS uses single quotes for strings: 'hello' -> Java/C++ need "hello"
 function convertInput(input:string,lang:string):string{
-  if(lang==="Python") return input; // Python accepts single quotes natively
-  // For Java and C++: replace single-quoted strings with double-quoted
-  // e.g. 'hello' -> "hello", '' -> ""
+  if(lang==="Python") return input;
   return input.replace(/'([^']*)'/g,(_:string,s:string)=>`"${s}"`);
 }
 
 function buildSubmission(code:string,lang:string,input:string):string{
   const inp=convertInput(input,lang);
   if(lang==="Python"){
-    // Python uses single or double quotes fine, just pass through
     return `${code}\n\ntry:\n    _result = solution(${input})\n    print(_result)\nexcept Exception as e:\n    print(f"Error: {e}")`;
   }else if(lang==="Java"){
     if(!code.includes("class Main")&&!code.includes("class Solution")){
-      // Wrap the user's method inside a Main class
       return `import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n${code}\npublic static void main(String[] args){\ntry{\nObject _r=solution(${inp});\nif(_r instanceof int[]){System.out.println(Arrays.toString((int[])_r));}\nelse if(_r instanceof long[]){System.out.println(Arrays.toString((long[])_r));}\nelse if(_r instanceof double[]){System.out.println(Arrays.toString((double[])_r));}\nelse if(_r instanceof String[]){System.out.println(Arrays.toString((String[])_r));}\nelse if(_r instanceof boolean[]){System.out.println(Arrays.toString((boolean[])_r));}\nelse{System.out.println(_r);}\n}catch(Exception e){System.out.println("Error: "+e.getMessage());}\n}\n}`;
     }
     return code;
@@ -83,7 +77,6 @@ async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<an
       }
       const got=stdout.trim();
       const expected=tc.expected.trim().replace(/^['"]|['"]$/g,"");
-      // Normalize: compare trimmed, and also try with/without quotes, and numeric comparison
       const pass=got===expected
         ||got===tc.expected.trim()
         ||(parseFloat(got)===parseFloat(expected)&&!isNaN(parseFloat(got)))
@@ -95,8 +88,6 @@ async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<an
   }));
   return results;
 }
-
-
 
 function DatePicker({value,onChange}:any){
   const today=new Date();
@@ -182,11 +173,11 @@ const initData:any={
     {id:2,title:"Reverse a String",difficulty:"Easy",language:"Java",
       desc:"Write a function called `solution` that takes a string and returns it reversed.\n\nExample: solution('hello') → 'olleh'",
       starterCodes:{"Java":"static String solution(String s) {\n    // your code here\n    return \"\";\n}","Python":"def solution(s):\n    # your code here\n    return \"\"","C++":"string solution(string s) {\n    // your code here\n    return s;\n}"},
-      testCases:[{input:'"\"hello\""',expected:'"\"olleh\""',{input:'"\"world\""',expected:'"\"dlrow\""'},{input:"'a'",expected:"'a'"}]},
+      testCases:[{input:'"hello"',expected:'"olleh"'},{input:'"world"',expected:'"dlrow"'},{input:'"a"',expected:'"a"'}]},
     {id:3,title:"Is Palindrome",difficulty:"Medium",language:"Java",
       desc:"Write a function called `solution` that returns true if a string is a palindrome, false otherwise.\n\nExample: solution('racecar') → true",
       starterCodes:{"Java":"static boolean solution(String s) {\n    // your code here\n    return false;\n}","Python":"def solution(s):\n    # your code here\n    return False","C++":"bool solution(string s) {\n    // your code here\n    return false;\n}"},
-      testCases:[{input:'"\"racecar\""',expected:"true"},{input:'"hello"',expected:"false"},{input:'"level"',expected:"true"},{input:'"a"',expected:"true"}]},
+      testCases:[{input:'"racecar"',expected:"true"},{input:'"hello"',expected:"false"},{input:'"level"',expected:"true"},{input:'"a"',expected:"true"}]},
   ],
   units:[{id:1,title:"Intro to CS Concepts",desc:"Foundational concepts every CS student should know.",problemIds:[1,2,3]}],
   completions:{},codingSubmissions:{},attempts:{},streaks:{},
@@ -256,7 +247,6 @@ function Header({user,onSignOut,onManage,isDev}:any){
     </div>
   );
 }
-
 
 /* ---- FORUM PAGE ---- */
 function ForumPage({user,isGuest,isOfficer}:any){
@@ -373,7 +363,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
                 <span style={{fontSize:11,color:C.muted}}>·</span>
                 <span style={{fontSize:11,color:C.muted}}>{new Date(t.createdAt).toLocaleDateString()}</span>
                 <div style={{marginLeft:"auto",display:"flex",gap:6}} onClick={(e:any)=>e.stopPropagation()}>
-                  {(user?.username===t.username)&&<button onClick={(e:any)=>startEditThread(t,e)} style={{background:"transparent",border:"none",color:C.blue,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
+                  {(user?.username===t.username)&&<button onClick={(e:any)=>startEditThread(t,e)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
                   {(user?.username===t.username||isOfficer)&&<button onClick={(e:any)=>deleteThread(t.id,e)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Delete</button>}
                 </div>
               </div>
@@ -453,14 +443,14 @@ function ThreadView({thread,user,onBack,isOfficer}:any){
       {replies.map((r:any,i:number)=>(
         <div key={r.id} style={{...cardS,borderLeft:`3px solid ${C.border}`}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-            <div style={{width:28,height:28,borderRadius:"50%",background:`${C.blue}33`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:C.blue,flexShrink:0}}>{(r.author||"?")[0].toUpperCase()}</div>
+            <div style={{width:28,height:28,borderRadius:"50%",background:`${C.orange}33`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:C.orange,flexShrink:0}}>{(r.author||"?")[0].toUpperCase()}</div>
             <span style={{fontWeight:600,fontSize:13}}>{r.author}</span>
             <span style={{fontSize:11,color:C.muted}}>·</span>
             <span style={{fontSize:11,color:C.muted}}>{new Date(r.createdAt).toLocaleDateString()}</span>
             <span style={{fontSize:11,color:C.muted}}>#{i+1}</span>
             {r.edited&&<span style={{fontSize:10,color:C.muted}}>(edited)</span>}
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-              {user?.username===r.username&&editingReply!==r.id&&<button onClick={()=>startEditReply(r)} style={{background:"transparent",border:"none",color:C.blue,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
+              {user?.username===r.username&&editingReply!==r.id&&<button onClick={()=>startEditReply(r)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
               {(user?.username===r.username||isOfficer)&&<button onClick={()=>deleteReply(r.id)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Delete</button>}
             </div>
           </div>
@@ -732,7 +722,7 @@ export default function App(){
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
                 {[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,count:((data.completions||{})[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
-                    <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.blue}44`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.blue:C.muted,flexShrink:0}}>{i+1}</div>
+                    <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.orange}28`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.orange:C.muted,flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
                     <div style={{fontWeight:700,color:C.orange}}>{u.count}</div><div style={{fontSize:12,color:C.muted}}>solved</div>
                   </div>
@@ -879,7 +869,7 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.blue}18`,border:`1px solid ${C.blue}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.blue}}>
+                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
                   💡 Select a language and write your solution.
                 </div>
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
@@ -903,7 +893,7 @@ export default function App(){
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn color={C.blue} onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
+                        <Btn onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
                           <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}));}}>Remove</OutBtn>
@@ -954,13 +944,11 @@ export default function App(){
   );
 }
 
+/* ---- CODE EDITOR ---- */
+const PAIRS:any = {'(':')','{':'}','[':']'};
+const OPEN_PAIRS = new Set(['(', '{', '[']);
+const CLOSE_PAIRS = new Set([')', '}', ']']);
 
-/* ---- CODE EDITOR with IDE quality-of-life features ---- */
-const PAIRS:any = {'(':')','{':'}','[':']','"':'"'};
-const OPEN_PAIRS = new Set(['(', '{', '[', '"']);
-const CLOSE_PAIRS = new Set([')', '}', ']', '"']);
-
-// Java keywords for simple syntax highlighting via div overlay
 const JAVA_KEYWORDS = ['public','private','protected','static','void','int','String','boolean','double','float','long','char','byte','short','return','if','else','for','while','do','switch','case','break','continue','new','class','interface','extends','implements','this','super','null','true','false','final','abstract','import','package','try','catch','finally','throws','throw'];
 const PYTHON_KEYWORDS = ['def','return','if','elif','else','for','while','and','or','not','in','is','None','True','False','class','import','from','try','except','finally','with','as','pass','break','continue','lambda','yield'];
 const CPP_KEYWORDS = ['int','void','bool','char','double','float','long','short','return','if','else','for','while','do','switch','case','break','continue','new','delete','class','public','private','protected','static','const','true','false','nullptr','auto','include','using','namespace','std','cout','cin','endl'];
@@ -973,20 +961,11 @@ function getKeywords(lang:string):string[]{
 
 function CodeEditor({code,onChange,lang}:any){
   const taRef = useRef<any>();
-  const hlRef = useRef<any>();
   const [lineCount,setLineCount] = useState(1);
 
   useEffect(()=>{
     setLineCount(Math.max(1,(code.match(/\n/g)||[]).length+1));
   },[code]);
-
-  // Sync scroll between textarea and highlight layer
-  const onScroll = () => {
-    if(hlRef.current&&taRef.current){
-      hlRef.current.scrollTop = taRef.current.scrollTop;
-      hlRef.current.scrollLeft = taRef.current.scrollLeft;
-    }
-  };
 
   const handleKeyDown = (e:any) => {
     const ta = e.target;
@@ -1001,7 +980,6 @@ function CodeEditor({code,onChange,lang}:any){
       e.preventDefault();
       const TAB = "  ";
       if(e.shiftKey){
-        // Un-indent
         const ls = val.lastIndexOf("\n",start-1)+1;
         if(val[ls]===" "&&val[ls+1]===" "){
           const nv = val.slice(0,ls)+val.slice(ls+2);
@@ -1024,15 +1002,13 @@ function CodeEditor({code,onChange,lang}:any){
       onChange(nv);
       const pos = start+1+indent.length+extraIndent.length;
       requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos;});
-    } else if(OPEN_PAIRS[e.key]){ 
-      // Auto-close brackets {} () []
+    } else if(OPEN_PAIRS[e.key]){
       e.preventDefault();
       const close = PAIRS[e.key];
       const nv = val.slice(0,start)+e.key+close+val.slice(end);
       onChange(nv);
       requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
     } else if(e.key==='"'){
-      // Auto-close quotes
       e.preventDefault();
       if(val[start]==='"'){
         requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
@@ -1041,12 +1017,19 @@ function CodeEditor({code,onChange,lang}:any){
         onChange(nv);
         requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
       }
-    } else if(CLOSE_PAIRS.has(e.key)&&val[start]===e.key){ 
-      // Skip over closing bracket if already there
+    } else if(e.key==="'"){ 
+      e.preventDefault();
+      if(val[start]==="'"){
+        requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
+      } else {
+        const nv = val.slice(0,start)+"'"+"'"+val.slice(end);
+        onChange(nv);
+        requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
+      }
+    } else if(CLOSE_PAIRS.has(e.key)&&val[start]===e.key){
       e.preventDefault();
       requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start+1;});
     } else if(e.key==="Backspace"&&start===end){
-      // Delete matching pair if cursor is between them
       const prev = val[start-1];
       const next = val[start];
       if(prev&&next&&PAIRS[prev]===next){
@@ -1056,7 +1039,6 @@ function CodeEditor({code,onChange,lang}:any){
         requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=start-1;});
       }
     } else if(e.ctrlKey&&e.key==="/"){
-      // Toggle line comment
       e.preventDefault();
       const ls = val.lastIndexOf("\n",start-1)+1;
       const le = val.indexOf("\n",start);
@@ -1073,10 +1055,6 @@ function CodeEditor({code,onChange,lang}:any){
     }
   };
 
-  const editorStyle:any = {
-    position:"relative",background:C.bgInput,border:`1px solid ${C.border}`,
-    borderRadius:6,overflow:"hidden",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:"1.6",
-  };
   const sharedTextStyle:any = {
     margin:0,padding:"10px 10px 10px 0",fontFamily:"'Courier New',monospace",
     fontSize:13,lineHeight:"1.6",whiteSpace:"pre",overflowWrap:"normal",wordBreak:"normal",
@@ -1084,24 +1062,20 @@ function CodeEditor({code,onChange,lang}:any){
   };
 
   return(
-    <div style={editorStyle}>
-      {/* Keyboard shortcuts hint */}
+    <div style={{position:"relative",background:C.bgInput,border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",fontFamily:"'Courier New',monospace",fontSize:13,lineHeight:"1.6"}}>
       <div style={{background:C.bgCard,borderBottom:`1px solid ${C.border}`,padding:"3px 10px",fontSize:11,color:C.muted,display:"flex",gap:12}}>
-        <span>Tab: indent</span><span>Shift+Tab: unindent</span><span>Ctrl+/: comment</span><span>Auto-close: () [] {"{}"}</span>
+        <span>Tab: indent</span><span>Shift+Tab: unindent</span><span>Ctrl+/: comment</span><span>Auto-close: {"() [] {}"}</span>
       </div>
       <div style={{display:"flex",height:340,overflow:"hidden",minHeight:340}}>
-        {/* Line numbers */}
-        <div style={{...sharedTextStyle,padding:"10px 8px 10px 10px",color:C.muted,background:`${C.bg}88`,borderRight:`1px solid ${C.border}`,flexShrink:0,minWidth:40,textAlign:"right",userSelect:"none",overflowY:"hidden"}}>
+        <div style={{...sharedTextStyle,padding:"10px 8px 10px 10px",color:C.muted,background:`${C.bg}88`,borderRight:`1px solid ${C.border}`,flexShrink:0,minWidth:40,textAlign:"right",userSelect:"none" as const,overflowY:"hidden" as const}}>
           {Array.from({length:lineCount},(_,i)=>i+1).map(n=><div key={n}>{n}</div>)}
         </div>
         <div style={{flex:1,position:"relative",overflow:"hidden"}}>
-          {/* Textarea for editing */}
           <textarea
             ref={taRef}
             value={code}
             onChange={(e:any)=>onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            onScroll={onScroll}
             spellCheck={false}
             style={{
               ...sharedTextStyle,
@@ -1113,7 +1087,6 @@ function CodeEditor({code,onChange,lang}:any){
           />
         </div>
       </div>
-      {/* Bottom status bar */}
       <div style={{background:C.bgCard,borderTop:`1px solid ${C.border}`,padding:"2px 10px",fontSize:11,color:C.muted,display:"flex",gap:16}}>
         <span>{lang}</span>
         <span>Lines: {lineCount}</span>
@@ -1131,7 +1104,6 @@ function CodingView({cq,user,data,upd,onBack}:any){
   };
   const initLang=(cq.language&&LANGS.includes(cq.language))?cq.language:"Java";
   const [lang,setLang]=useState(initLang);
-  // Use per-language starter code if available, otherwise fall back to generic STARTER
   const getStarter=(l:string)=>(cq.starterCodes||{})[l]||cq.starterCode||STARTER[l]||STARTER["Python"];
   const [code,setCode]=useState(getStarter(initLang));
   const [results,setResults]=useState<any>(null);
@@ -1147,13 +1119,11 @@ function CodingView({cq,user,data,upd,onBack}:any){
   const run=async()=>{
     setRunning(true);setResults(null);setRunErr("");
     try{
-      let res:any[];
-      // Always run on Judge0 for real language execution
-      res=await runWithJudge0(code,lang,cq.testCases||[]);
+      const res=await runWithJudge0(code,lang,cq.testCases||[]);
       setResults(res);
       const passed=res.filter((r:any)=>r.pass).length;
       const tcLen=(cq.testCases||[]).length;
-const score=tcLen>0?Math.round((passed/tcLen)*100):0;
+      const score=tcLen>0?Math.round((passed/tcLen)*100):0;
       if(score>(myBest??-1)){
         upd((d:any)=>({...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score,code,lang,timestamp:new Date().toISOString()}}}}));
       }
@@ -1197,16 +1167,16 @@ const score=tcLen>0?Math.round((passed/tcLen)*100):0;
                 <h3 style={{margin:0,fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Your Solution</h3>
                 <div style={{display:"flex",gap:4}}>
                   {LANGS.map(l=>(
-                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.blue:C.border}`,borderRadius:5,background:lang===l?`${C.blue}22`:"transparent",color:lang===l?C.blue:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
+                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.orange:C.border}`,borderRadius:5,background:lang===l?`${C.orange}22`:"transparent",color:lang===l?C.orange:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
                   ))}
                 </div>
               </div>
-              <div style={{background:`${C.blue}15`,border:`1px solid ${C.blue}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.blue,marginBottom:8}}>
+              <div style={{background:`${C.orange}15`,border:`1px solid ${C.orange}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.orange,marginBottom:8}}>
                 May take a few seconds per test case.
               </div>
               <CodeEditor code={code} onChange={setCode} lang={lang}/>
               <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
-                <Btn color={C.blue} onClick={run} disabled={running} style={{minWidth:140}}>
+                <Btn onClick={run} disabled={running} style={{minWidth:140}}>
                   {running?<span style={{display:"flex",alignItems:"center",gap:8}}><span style={{display:"inline-block",width:12,height:12,border:`2px solid #ffffff55`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Running…</span>:"▶ Run code"}
                 </Btn>
               </div>
@@ -1255,21 +1225,12 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
   const [newFolderName,setNewFolderName]=useState("");
 
   const updateNode=(fn:any)=>upd((d:any)=>{
-    const clone=(items:any[]):any[]=>{
-      return items.map(item=>{
-        if(item.id===node.id)return fn(item);
-        if(item.isFolder)return{...item,children:clone(item.children||[]),items:(item.items||[])};
-        return item;
-      });
-    };
-    // Also search top-level and nested children
     const deepClone=(items:any[]):any[]=>{
       return items.map(item=>{
         if(item.id===node.id)return fn(item);
         if(item.isFolder){
           const newChildren=deepClone(item.children||[]);
-          const newItems=(item.items||[]);
-          return{...item,children:newChildren,items:newItems};
+          return{...item,children:newChildren,items:(item.items||[])};
         }
         return item;
       });
@@ -1395,9 +1356,7 @@ function OfficersPage({data,upd,isDev}:any){
   const events=data.officerEvents||[];
   const today=new Date().toISOString().slice(0,10);
 
-  // Load bug reports from Firestore
   useEffect(()=>{
-    
     const q=query(collection(db,"bugReports"),orderBy("timestamp","desc"));
     getDocs(q).then((snap:any)=>{
       setBugReports(snap.docs.map((d:any)=>({id:d.id,...d.data()})));
@@ -1524,7 +1483,6 @@ function OfficersPage({data,upd,isDev}:any){
         </div>
       )}
 
-      {/* BUG REPORTS SECTION */}
       <div style={{marginTop:32}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
           <h2 style={{margin:0,fontSize:18}}>Bug Reports</h2>
@@ -1698,6 +1656,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
   const [submitted,setSubmitted]=useState(false);
   const [result,setResult]=useState<any>(null);
   const completed=((data.completions||{})[user.username]||[]).some((id:any)=>String(id)===String(prob.id));
+
   const submit=()=>{
     if(selected===null)return;
     const correct=selected===prob.answer;
@@ -1708,55 +1667,78 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
       const na={total:ua.total+1,correct:ua.correct+(correct?1:0)};
       const s=d.streaks[user.username]||{lastDate:null,current:0,best:0};
       let ns={...s};
-      if(correct){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
-        if(s.lastDate===today){}else if(s.lastDate===yesterday){ns.current=s.current+1;ns.lastDate=today;}else{ns.current=1;ns.lastDate=today;}
-        if(ns.current>ns.best)ns.best=ns.current;}
+      if(correct){
+        const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+        if(s.lastDate===today){}
+        else if(s.lastDate===yesterday){ns.current=s.current+1;ns.lastDate=today;}
+        else{ns.current=1;ns.lastDate=today;}
+        if(ns.current>ns.best)ns.best=ns.current;
+      }
       const completions=correct&&!completed?{...d.completions,[user.username]:[...(d.completions[user.username]||[]),prob.id]}:d.completions;
       return{...d,completions,attempts:{...d.attempts,[user.username]:na},streaks:{...d.streaks,[user.username]:ns}};
     });
   };
 
-  const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit"};
-  const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit"].includes(modal)?520:430,maxHeight:"88vh",overflowY:"auto"};
   return(
-    <div style={overlay} onClick={close}>
-      <div style={box} onClick={(e:any)=>e.stopPropagation()}>
-        <h3 style={{margin:"0 0 16px",fontSize:16}}>{titles[modal]||"Add"}</h3>
-        {formErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {formErr}</div>}
-        {modal==="ann"&&<><label style={lbl}>Title <span style={{color:C.red}}>*</span></label><input style={{...inp,marginBottom:10}} value={f.title} onChange={(e:any)=>set({title:e.target.value})} placeholder="Announcement title"/><label style={lbl}>Body <span style={{color:C.red}}>*</span></label><textarea style={{...inp,height:80,resize:"vertical",marginBottom:10}} value={f.body} onChange={(e:any)=>set({body:e.target.value})} placeholder="Announcement text"/><ImgPick preview={f.image} onPick={(v:string)=>set({image:v})}/></>}
-        {modal==="evt"&&<>
-          <label style={lbl}>Title <span style={{color:C.red}}>*</span></label><input style={{...inp,marginBottom:12}} value={f.title} onChange={(e:any)=>set({title:e.target.value})} placeholder="Event title"/>
-          <label style={lbl}>Date <span style={{color:C.red}}>*</span></label><div style={{marginBottom:12}}><DatePicker value={f.date} onChange={(v:string)=>set({date:v})}/></div>
-          <label style={lbl}>Time</label><div style={{marginBottom:12}}><TimePicker value={f.time} onChange={(v:string)=>set({time:v})}/></div>
-          <label style={lbl}>Location</label><input style={{...inp,marginBottom:10}} value={f.location} onChange={(e:any)=>set({location:e.target.value})} placeholder="e.g. Room 214"/>
-          <label style={lbl}>Description</label><input style={{...inp,marginBottom:10}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})} placeholder="Optional details"/>
-          <ImgPick preview={f.image} onPick={(v:string)=>set({image:v})}/>
-        </>}
-        {modal==="prob"&&<><label style={lbl}>Problem title <span style={{color:C.red}}>*</span></label><input style={{...inp,marginBottom:10}} value={f.title} onChange={(e:any)=>set({title:e.target.value})} placeholder="e.g. FizzBuzz"/><label style={lbl}>Difficulty</label><select style={{...inp,marginBottom:10}} value={f.difficulty} onChange={(e:any)=>set({difficulty:e.target.value})}><option>Easy</option><option>Medium</option><option>Hard</option></select><label style={lbl}>Question <span style={{color:C.red}}>*</span></label><textarea style={{...inp,height:72,resize:"vertical",marginBottom:14}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})} placeholder="Write the question here"/><label style={lbl}>Answer choices — select the correct one <span style={{color:C.red}}>*</span></label>{[0,1,2,3].map(i=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><input type="radio" name="ans" checked={Number(f.answer)===i} onChange={()=>set({answer:i})} style={{accentColor:C.orange,flexShrink:0}}/><div style={{width:24,height:24,borderRadius:"50%",background:`${C.orange}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.orange,flexShrink:0}}>{String.fromCharCode(65+i)}</div><input style={inp} value={f.choices[i]} placeholder={`Choice ${String.fromCharCode(65+i)}`} onChange={(e:any)=>setChoice(i,e.target.value)}/></div>))}</>}
-        {modal==="unit"&&<><label style={lbl}>Unit title <span style={{color:C.red}}>*</span></label><input style={{...inp,marginBottom:10}} value={f.title} placeholder="e.g. Intro to Data Structures" onChange={(e:any)=>set({title:e.target.value})}/><label style={lbl}>Description (optional)</label><input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/><label style={lbl}>Select problems <span style={{color:C.red}}>*</span></label><div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:12}}>{(data.problems||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet — create some first.</p>}{(data.problems||[]).map((p:any)=>{const sel=f.selectedProblemIds.includes(p.id);return(<div key={p.id} onClick={()=>toggleProb(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}><div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div><span style={{flex:1,fontSize:14}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag></div>);})}</div>{f.selectedProblemIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length>1?"s":""} selected</p>}</>}
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
-          <OutBtn onClick={close}>Cancel</OutBtn>
-          <Btn onClick={submit}>{modal==="unit"?"Create unit":"Add"}</Btn>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
+      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+      <div style={{maxWidth:600,margin:"0 auto",padding:"2rem 1rem"}}>
+        <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back</OutBtn>
+        {unitCtx&&(
+          <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+            {unitCtx.unitTitle} · Problem {unitCtx.index+1} of {unitCtx.total}
+          </div>
+        )}
+        <div style={{...cardS,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontWeight:700,fontSize:18}}>{prob.title}</span>
+            <Tag c={diffColor[prob.difficulty]}>{prob.difficulty}</Tag>
+            {completed&&<Tag c={C.green}>✓ Solved</Tag>}
+          </div>
+          <div style={{fontSize:15,lineHeight:1.7,marginBottom:20}}>{prob.desc}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {prob.choices.map((choice:string,i:number)=>{
+              const isSelected=selected===i;
+              const isCorrect=submitted&&i===prob.answer;
+              const isWrong=submitted&&isSelected&&i!==prob.answer;
+              return(
+                <button key={i} onClick={()=>!submitted&&setSelected(i)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,borderRadius:8,background:isCorrect?`${C.green}18`:isWrong?`${C.red}18`:isSelected?`${C.orange}18`:C.bgInput,cursor:submitted?"default":"pointer",textAlign:"left",color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif",fontSize:14}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.muted,flexShrink:0,background:isCorrect?`${C.green}22`:isWrong?`${C.red}22`:isSelected?`${C.orange}22`:"transparent"}}>{String.fromCharCode(65+i)}</div>
+                  <span>{choice}</span>
+                  {isCorrect&&<span style={{marginLeft:"auto",color:C.green,fontSize:16}}>✓</span>}
+                  {isWrong&&<span style={{marginLeft:"auto",color:C.red,fontSize:16}}>✗</span>}
+                </button>
+              );
+            })}
+          </div>
+          {!submitted&&<div style={{marginTop:16,display:"flex",justifyContent:"flex-end"}}><Btn onClick={submit} disabled={selected===null}>Submit answer</Btn></div>}
+          {submitted&&(
+            <div style={{marginTop:16,padding:"12px 16px",borderRadius:8,background:result?`${C.green}18`:`${C.red}18`,border:`1px solid ${result?C.green:C.red}44`}}>
+              <div style={{fontWeight:700,color:result?C.green:C.red,fontSize:15,marginBottom:4}}>{result?"✓ Correct!":"✗ Incorrect"}</div>
+              {!result&&<div style={{fontSize:13,color:C.muted}}>The correct answer was <strong style={{color:C.green}}>{prob.choices[prob.answer]}</strong>.</div>}
+              {unitCtx&&onNext&&(
+                <div style={{marginTop:12,display:"flex",justifyContent:"flex-end"}}>
+                  <Btn onClick={onNext}>{unitCtx.index+1<unitCtx.total?"Next problem →":"Finish unit ✓"}</Btn>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-
 function LeaderboardPage({data,user}:any){
   const [lbTab,setLbTab]=useState("solved");
-  const medal=(i:number)=>i===0?C.orange:i===1?C.blue:C.muted;
-  const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.blue}44`:C.border;
+  const medal=(i:number)=>i===0?C.orange:i===1?C.orange:C.muted;
+  const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.orange}28`:C.border;
   const solvedRows=[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
   const accuracyRows=[...(data.users||[])].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
   const streakRows=[...(data.users||[])].map((u:any)=>{const s=((data.streaks||{})[u.username])||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
-  // Coding: count unique coding questions where best score === 100
   const codingRows=[...(data.users||[])].map((u:any)=>{
     const subs=((data.codingSubmissions||{})[u.username])||{};
     const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
-    const best=Object.values(subs).reduce((acc:number,s:any)=>acc+(s.score||0),0);
     const total=Object.values(subs).length;
     return{name:u.name||u.username,username:u.username,value:perfect,sub:total>0?`${total} attempted`:"",label:"perfect"};
   }).sort((a:any,b:any)=>b.value-a.value);
