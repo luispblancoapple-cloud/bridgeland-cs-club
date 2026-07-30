@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, query, orderBy, updateDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAJqtx5OvDPp4Xr_rTvq4QvlJYWgj0MtFs",
@@ -14,7 +14,44 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const DATA_DOC = doc(db, "club", "data");
 
-const DEV_ACCOUNT: any = { username:"LuisBlanco62",password:"Dinosaur#2010",role:"developer",name:"Luis Blanco" };
+// SECURITY NOTE: passwords are never stored or shipped in plaintext. We only ever
+// keep/compare a salted SHA-256 hash. See hashPassword() below. The dev account's
+// password hash was generated once, offline — the real password is not in this file
+// or in the Firestore document, so it can no longer be read via "View Source" or by
+// reading the database.
+const PW_SALT = "bcs-club-static-salt-v1";
+// Date.now() alone can collide if two items are created within the same millisecond
+// (e.g. quickly adding several MCQ choices/problems), which can cause id lookups to
+// grab the wrong item. uid() adds a random component to make that effectively impossible.
+function uid():number{ return Date.now()*1000+Math.floor(Math.random()*1000); }
+
+// Minimal CSV parser (handles quoted fields containing commas/newlines) used by the
+// "Import from Google Sheets" feature. Expects a Google Sheet published as CSV
+// (File > Share > Publish to web > choose the sheet > CSV).
+function parseCSV(text:string):string[][]{
+  const rows:string[][]=[]; let row:string[]=[]; let field=""; let inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQuotes){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQuotes=false; }
+      else field+=c;
+    }else{
+      if(c==='"')inQuotes=true;
+      else if(c===','){row.push(field);field="";}
+      else if(c==='\n'){row.push(field);rows.push(row);row=[];field="";}
+      else if(c==='\r'){/*skip*/}
+      else field+=c;
+    }
+  }
+  if(field.length||row.length){row.push(field);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+async function hashPassword(pw:string):Promise<string>{
+  const enc = new TextEncoder().encode(pw + PW_SALT);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+const DEV_ACCOUNT: any = { username:"LuisBlanco62",passwordHash:"d76b58cc21175bccfb07399a4531e3a0141dce781c16f4e96ed05e29c5452d5f",role:"developer",name:"Luis Blanco" };
 const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
 const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDfiOI_400x400.jpg";
 
@@ -151,6 +188,7 @@ const initData:any={
     {id:1,title:"Weekly Meeting",date:"2025-09-06",time:"2:40 PM",location:"Room 214",desc:"Regular weekly meeting. Bring your laptops!",image:""},
     {id:2,title:"Hackathon Prep",date:"2025-09-13",time:"2:40 PM",location:"Room 214",desc:"Prepare for upcoming hackathon season.",image:""},
   ],
+  importantLinks:[],
   resources:[
     {id:"f1",title:"Meeting Notes",isFolder:true,children:[],items:[{id:1,title:"Meeting Notes — Aug 28",url:"https://docs.google.com",image:""}]},
     {id:"f2",title:"Learning Resources",isFolder:true,children:[],items:[
@@ -191,7 +229,27 @@ const initData:any={
   },
 };
 
-async function saveData(d:any){if(!d)return;try{await setDoc(DATA_DOC,d);}catch(e){console.error("Save failed",e);}}
+// BUGFIX: the old saveData() called setDoc(DATA_DOC, wholeLocalCopy) on every single
+// change. That replaces the ENTIRE shared document with whatever this one browser tab
+// happened to have in memory. If two people made changes around the same time (very
+// common right when a new member registers while an officer is also editing something),
+// whoever saved second would silently wipe out the other person's change — which is
+// what looked like "the website resetting". Fix: only send the fields that actually
+// changed, using updateDoc, so unrelated concurrent edits from other tabs are preserved.
+async function saveData(prev:any,next:any){
+  if(!next)return;
+  const changed:any={};
+  const keys=new Set([...Object.keys(prev||{}),...Object.keys(next)]);
+  keys.forEach(k=>{ if(JSON.stringify(prev?.[k])!==JSON.stringify(next[k])) changed[k]=next[k]; });
+  if(Object.keys(changed).length===0)return;
+  try{
+    await updateDoc(DATA_DOC,changed);
+  }catch(e){
+    // Doc may not exist yet (very first write) — updateDoc fails if there's nothing
+    // to update, so fall back to a merge-write in that one case only.
+    try{await setDoc(DATA_DOC,next,{merge:true});}catch(e2){console.error("Save failed",e2);}
+  }
+}
 function toB64(file:File):Promise<string>{
   return new Promise((res,rej)=>{
     if(file.size>4*1024*1024){rej(new Error("Image too large (max 4MB)"));return;}
@@ -228,6 +286,74 @@ const SecBtn=({children,onClick,style={}}:any)=>(
 );
 const Tag=({c,children}:any)=><span style={{background:`${c}22`,color:c,fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{children}</span>;
 
+function NotificationBell({user}:any){
+  const [notifs,setNotifs]=useState<any[]>([]);
+  const [open,setOpen]=useState(false);
+  const isOfficer=user&&(user.role==="officer"||user.role==="developer");
+  useEffect(()=>{
+    if(!user||user.role==="guest")return;
+    const q=query(collection(db,"notifications"),orderBy("createdAt","desc"),limit(30));
+    const unsub=onSnapshot(q,snap=>{
+      setNotifs(snap.docs.map((d:any)=>({id:d.id,...d.data()})));
+    },err=>console.error("Notifications error",err));
+    return()=>unsub();
+  },[user?.username]);
+  if(!user||user.role==="guest")return null;
+  const relevant=notifs.filter((n:any)=>n.audience==="all"||(n.audience==="officers"&&isOfficer)||n.audience===user.username);
+  const unread=relevant.filter((n:any)=>!(n.readBy||[]).includes(user.username));
+  const markRead=(n:any)=>{
+    if((n.readBy||[]).includes(user.username))return;
+    updateDoc(doc(db,"notifications",n.id),{readBy:arrayUnion(user.username)}).catch((e:any)=>console.error(e));
+  };
+  const markAllRead=()=>{
+    unread.forEach((n:any)=>markRead(n));
+  };
+  const timeAgo=(iso:string)=>{
+    const diff=Date.now()-new Date(iso).getTime();
+    const mins=Math.floor(diff/60000);
+    if(mins<1)return"just now";
+    if(mins<60)return`${mins}m ago`;
+    const hrs=Math.floor(mins/60);
+    if(hrs<24)return`${hrs}h ago`;
+    return`${Math.floor(hrs/24)}d ago`;
+  };
+  return(
+    <div style={{position:"relative"}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{background:"transparent",border:"none",cursor:"pointer",position:"relative",padding:"6px 4px",fontSize:19,color:"#cdd5e0",display:"flex",alignItems:"center"}} aria-label="Notifications">
+        🔔
+        {unread.length>0&&<span style={{position:"absolute",top:0,right:0,background:C.red,color:"#fff",fontSize:10,fontWeight:700,borderRadius:"50%",minWidth:15,height:15,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{unread.length>9?"9+":unread.length}</span>}
+      </button>
+      {open&&(
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setOpen(false)}/>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:400,overflowY:"auto",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.5)",zIndex:999}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${C.border}`}}>
+              <span style={{fontWeight:700,fontSize:13,color:C.text}}>Notifications</span>
+              {unread.length>0&&<button onClick={markAllRead} style={{background:"transparent",border:"none",color:C.orange,fontSize:11,cursor:"pointer",fontWeight:600}}>Mark all read</button>}
+            </div>
+            {relevant.length===0&&<div style={{padding:"20px 14px",color:C.muted,fontSize:13,textAlign:"center"}}>No notifications yet.</div>}
+            {relevant.slice(0,20).map((n:any)=>{
+              const isUnread=!(n.readBy||[]).includes(user.username);
+              return(
+                <div key={n.id} onClick={()=>markRead(n)} style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,cursor:"pointer",background:isUnread?`${C.orange}14`:"transparent"}}>
+                  <div style={{display:"flex",gap:6,alignItems:"flex-start"}}>
+                    {isUnread&&<span style={{width:7,height:7,borderRadius:"50%",background:C.orange,marginTop:5,flexShrink:0}}/>}
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:600,fontSize:13,color:C.text}}>{n.title}</div>
+                      <div style={{fontSize:12,color:C.muted,marginTop:2}}>{n.body}</div>
+                      <div style={{fontSize:10,color:C.muted,marginTop:4}}>{timeAgo(n.createdAt)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Header({user,onSignOut,onManage,isDev}:any){
   return(
     <div style={{background:C.navy,borderBottom:`3px solid ${C.orange}`,padding:"0 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between",height:60}}>
@@ -237,6 +363,7 @@ function Header({user,onSignOut,onManage,isDev}:any){
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         {user&&<>
+          <NotificationBell user={user}/>
           <span style={{fontSize:13,color:"#cdd5e0"}}>{user.name||user.username}</span>
           {user.role!=="member"&&user.role!=="guest"&&<Tag c={C.orange}>{user.role==="developer"?"Developer":"Officer"}</Tag>}
           {user.role==="guest"&&<Tag c={C.guest}>guest</Tag>}
@@ -260,6 +387,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
   const [editingThread,setEditingThread]=useState<any>(null);
   const [editTitle,setEditTitle]=useState("");
   const [editBody,setEditBody]=useState("");
+  const [search,setSearch]=useState("");
 
   const loadThreads=async()=>{
     setLoading(true);
@@ -333,9 +461,11 @@ function ForumPage({user,isGuest,isOfficer}:any){
           </div>
         </div>
       )}
+      <input style={{...inp,marginBottom:16}} value={search} onChange={(e:any)=>setSearch(e.target.value)} placeholder="🔍 Search discussions..."/>
       {loading&&<p style={{color:C.muted}}>Loading threads…</p>}
       {!loading&&threads.length===0&&<p style={{color:C.muted}}>No threads yet. Be the first to start a discussion!</p>}
-      {threads.map((t:any)=>(
+      {!loading&&threads.length>0&&threads.filter((t:any)=>!search||t.title.toLowerCase().includes(search.toLowerCase())||t.body.toLowerCase().includes(search.toLowerCase())).length===0&&<p style={{color:C.muted}}>No discussions match "{search}".</p>}
+      {threads.filter((t:any)=>!search||t.title.toLowerCase().includes(search.toLowerCase())||t.body.toLowerCase().includes(search.toLowerCase())).map((t:any)=>(
         <div key={t.id} style={{...cardS,cursor:"pointer"}} onClick={()=>editingThread!==t.id&&setActiveThread(t)}>
           {editingThread===t.id?(
             <div onClick={(e:any)=>e.stopPropagation()}>
@@ -577,13 +707,15 @@ export default function App(){
   const [page,setPage]=useState("home");
   const [loginForm,setLoginForm]=useState({username:"",password:""});
   const [loginErr,setLoginErr]=useState("");
-  const [regForm,setRegForm]=useState({username:"",password:"",name:""});
+  const [regForm,setRegForm]=useState({username:"",password:"",name:"",email:"",phone:""});
   const [regErr,setRegErr]=useState("");
   const [showReg,setShowReg]=useState(false);
   const [modal,setModal]=useState<any>(null);
   const [activeProblem,setActiveProblem]=useState<any>(null);
   const [activeUnit,setActiveUnit]=useState<any>(null);
   const [activeCoding,setActiveCoding]=useState<any>(null);
+  const [problemSearch,setProblemSearch]=useState("");
+  const [dismissedAnnId,setDismissedAnnId]=useState<any>(null);
 
   useEffect(()=>{
     const unsub=onSnapshot(DATA_DOC,snap=>{
@@ -594,22 +726,49 @@ export default function App(){
     return()=>unsub();
   },[]);
 
-  const upd=(fn:any)=>setData((prev:any)=>{const next=fn(prev);saveData(next);return next;});
+  const upd=(fn:any,logMeta?:any)=>setData((prev:any)=>{
+    const next=fn(prev);
+    saveData(prev,next);
+    if(logMeta){
+      addDoc(collection(db,"auditLog"),{
+        action:logMeta.action,
+        actor:logMeta.actorUsername||user?.username||"system",
+        actorName:logMeta.actorName||user?.name||user?.username||"System",
+        createdAt:new Date().toISOString(),
+      }).catch((e:any)=>console.error("Audit log failed",e));
+    }
+    return next;
+  });
   const isOfficer=user&&(user.role==="officer"||user.role==="developer");
   const isDev=user&&user.role==="developer";
   const isGuest=user&&user.role==="guest";
   const myCompleted=user&&!isGuest?((data.completions||{})[user.username]||[]):[];
 
-  const login=()=>{
-    if(loginForm.username===DEV_ACCOUNT.username&&loginForm.password===DEV_ACCOUNT.password){setUser(DEV_ACCOUNT);setLoginErr("");return;}
-    const f=data.users.find((u:any)=>u.username===loginForm.username&&u.password===loginForm.password);
+  const login=async()=>{
+    const attemptHash=await hashPassword(loginForm.password);
+    if(loginForm.username===DEV_ACCOUNT.username&&attemptHash===DEV_ACCOUNT.passwordHash){setUser(DEV_ACCOUNT);setLoginErr("");return;}
+    let f=data.users.find((u:any)=>u.username===loginForm.username&&u.passwordHash===attemptHash);
+    // MIGRATION: accounts created before this security update stored a plaintext
+    // `password` field instead of `passwordHash`. If we find one, log the member in
+    // as normal, then silently upgrade their record to a hash and drop the plaintext
+    // field — no action needed from them, and their old password keeps working once.
+    if(!f){
+      const legacy=data.users.find((u:any)=>u.username===loginForm.username&&u.password&&u.password===loginForm.password);
+      if(legacy){
+        f={...legacy,passwordHash:attemptHash};
+        delete f.password;
+        upd((d:any)=>({...d,users:d.users.map((u:any)=>u.username===legacy.username?f:u)}));
+      }
+    }
     if(f){setUser(f);setLoginErr("");}else setLoginErr("Invalid username or password.");
   };
-  const register=()=>{
+  const register=async()=>{
     if(!regForm.username||!regForm.password||!regForm.name){setRegErr("All fields required.");return;}
+    if(regForm.password.length<8){setRegErr("Password must be at least 8 characters.");return;}
     if(data.users.find((u:any)=>u.username===regForm.username)||regForm.username===DEV_ACCOUNT.username){setRegErr("Username taken.");return;}
-    const nu={username:regForm.username,password:regForm.password,name:regForm.name,role:"member"};
-    upd((d:any)=>({...d,users:[...d.users,nu]}));
+    const passwordHash=await hashPassword(regForm.password);
+    const nu={username:regForm.username,passwordHash,name:regForm.name,email:regForm.email||"",phone:regForm.phone||"",role:"member",notifyEmail:!!regForm.email,notifyText:false,createdAt:new Date().toISOString()};
+    upd((d:any)=>({...d,users:[...d.users,nu]}),{action:`${nu.name} (@${nu.username}) joined the club`,actorName:nu.name,actorUsername:nu.username});
     setUser(nu);setRegErr("");
   };
 
@@ -657,7 +816,11 @@ export default function App(){
             <label style={lbl}>Username</label>
             <input style={{...inp,marginBottom:12}} value={regForm.username} onChange={(e:any)=>setRegForm((f:any)=>({...f,username:e.target.value}))} placeholder="Choose a username"/>
             <label style={lbl}>Password</label>
-            <input style={{...inp,marginBottom:16}} type="password" value={regForm.password} onChange={(e:any)=>setRegForm((f:any)=>({...f,password:e.target.value}))} placeholder="Choose a password"/>
+            <input style={{...inp,marginBottom:12}} type="password" value={regForm.password} onChange={(e:any)=>setRegForm((f:any)=>({...f,password:e.target.value}))} placeholder="At least 8 characters"/>
+            <label style={lbl}>Email (optional — for notifications)</label>
+            <input style={{...inp,marginBottom:12}} type="email" value={regForm.email} onChange={(e:any)=>setRegForm((f:any)=>({...f,email:e.target.value}))} placeholder="you@example.com"/>
+            <label style={lbl}>Phone (optional — for text notifications)</label>
+            <input style={{...inp,marginBottom:16}} type="tel" value={regForm.phone} onChange={(e:any)=>setRegForm((f:any)=>({...f,phone:e.target.value}))} placeholder="(555) 555-5555"/>
             {regErr&&<p style={{color:C.red,fontSize:13,margin:"0 0 12px"}}>{regErr}</p>}
             <Btn style={{width:"100%",padding:"10px"}} onClick={register}>Create account</Btn>
             <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:12}}><span style={{color:C.orange,cursor:"pointer"}} onClick={()=>setShowReg(false)}>Back to sign in</span></p>
@@ -674,9 +837,9 @@ export default function App(){
     return <CodingView cq={cq} user={user} data={data} upd={upd} onBack={()=>setActiveCoding(null)}/>;
   }
   if(activeProblem!==null){
-    const prob=data.problems.find((p:any)=>p.id===activeProblem.id);
+    const prob=data.problems.find((p:any)=>String(p.id)===String(activeProblem.id));
     if(!prob){ return <div style={{padding:'2rem',color:C.muted}}>Problem not found. <button onClick={()=>setActiveProblem(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
-    return <ProblemView prob={prob} user={user} data={data} upd={upd} onBack={()=>setActiveProblem(null)} unitCtx={activeProblem.unitCtx} onNext={activeProblem.onNext}/>;
+    return <ProblemView key={prob.id} prob={prob} user={user} data={data} upd={upd} onBack={()=>setActiveProblem(null)} unitCtx={activeProblem.unitCtx} onNext={activeProblem.onNext}/>;
   }
   if(activeUnit!==null){
     const unit=data.units.find((u:any)=>u.id===activeUnit);
@@ -692,6 +855,20 @@ export default function App(){
       <div style={{background:"#111827",borderBottom:`1px solid ${C.border}`,padding:"0 1rem",display:"flex",gap:2,overflowX:"auto"}}>
         {navItems.map(p=><button key={p} style={navBtn(page===p)} onClick={()=>setPage(p)}>{navLabels[p]}</button>)}
       </div>
+      {(()=>{
+        const latest=(data.announcements||[])[(data.announcements||[]).length-1];
+        if(!latest||dismissedAnnId===latest.id||page==="announcements")return null;
+        return(
+          <div style={{background:`${C.orange}1f`,borderBottom:`1px solid ${C.orange}44`,padding:"10px 1rem",display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:16,flexShrink:0}}>📣</span>
+            <div style={{flex:1,fontSize:13,color:C.text,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              <strong>{latest.title}</strong><span style={{color:C.muted}}> — {latest.body}</span>
+            </div>
+            <button onClick={()=>setPage("announcements")} style={{background:"transparent",border:`1px solid ${C.orange}66`,color:C.orange,borderRadius:6,padding:"4px 10px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>View all</button>
+            <button onClick={()=>setDismissedAnnId(latest.id)} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:16,padding:"0 4px",flexShrink:0}}>×</button>
+          </div>
+        );
+      })()}
       <div style={{maxWidth:780,margin:"0 auto",padding:"1.5rem 1rem"}}>
 
         {page==="home"&&(
@@ -717,6 +894,7 @@ export default function App(){
               </div>
             )}
             {isGuest&&(<div style={{...cardS,borderLeft:`3px solid ${C.guest}`,marginBottom:24}}><div style={{fontWeight:600,fontSize:14,color:C.guest,marginBottom:4}}>Browsing as Guest</div><div style={{fontSize:13,color:C.muted}}>Sign in or create an account to do practice problems and appear on the leaderboard.</div></div>)}
+            <ImportantLinksBox data={data} upd={upd} isOfficer={isOfficer}/>
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
@@ -807,11 +985,12 @@ export default function App(){
 
         {page==="problems"&&(
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
               <h2 style={{margin:0}}>Problems</h2>
-              {isOfficer&&<div style={{display:"flex",gap:8}}>
+              {isOfficer&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
                 <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
+                <OutBtn onClick={()=>setModal("importCsv")}>Import from Google Sheets</OutBtn>
               </div>}
             </div>
             {isGuest?(
@@ -822,34 +1001,59 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.orange}18`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>Units group problems together. Start a unit to go through them back-to-back.</div>
-                {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
-                {(data.units||[]).map((unit:any)=>{
-                  const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
-                  const solved=probs.filter((p:any)=>(myCompleted||[]).some((id:any)=>String(id)===String(p.id))).length;
-                  return(
-                    <div key={unit.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveUnit(unit.id)}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{unit.title}</div>
-                          {unit.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{unit.desc}</div>}
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{probs.map((p:any)=><Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
+                <input style={{...inp,marginBottom:16}} value={problemSearch} onChange={(e:any)=>setProblemSearch(e.target.value)} placeholder="🔍 Search units and problems by title..."/>
+                {!problemSearch&&<>
+                  <div style={{background:`${C.orange}18`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>Units group problems together. Start a unit to go through them back-to-back.</div>
+                  {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
+                  {(data.units||[]).map((unit:any)=>{
+                    const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
+                    const solved=probs.filter((p:any)=>(myCompleted||[]).some((id:any)=>String(id)===String(p.id))).length;
+                    return(
+                      <div key={unit.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveUnit(unit.id)}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{unit.title}</div>
+                            {unit.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{unit.desc}</div>}
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{probs.map((p:any)=><Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
+                          </div>
+                          <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
+                            <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{solved}/{probs.length}</div>
+                            <div style={{fontSize:11,color:C.muted}}>solved</div>
+                          </div>
                         </div>
-                        <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
-                          <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{solved}/{probs.length}</div>
-                          <div style={{fontSize:11,color:C.muted}}>solved</div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
+                          <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit →</Btn>
+                          {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
+                            <SecBtn onClick={()=>setModal({type:"editUnit",unit})}>Edit problems</SecBtn>
+                            <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,units:(d.units||[]).filter((x:any)=>x.id!==unit.id)}),{action:`Removed unit "${unit.title}"`});}}>Remove</OutBtn>
+                          </div>}
                         </div>
                       </div>
-                      <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-                        <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit →</Btn>
-                        {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
-                          <SecBtn onClick={()=>setModal({type:"editUnit",unit})}>Edit problems</SecBtn>
-                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,units:(d.units||[]).filter((x:any)=>x.id!==unit.id)}));}}>Remove</OutBtn>
+                    );
+                  })}
+                </>}
+                <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>{problemSearch?"Search results":"All problems"}</h3>
+                {(data.problems||[])
+                  .filter((p:any)=>!problemSearch||p.title.toLowerCase().includes(problemSearch.toLowerCase())||p.desc.toLowerCase().includes(problemSearch.toLowerCase()))
+                  .map((p:any)=>{
+                    const done=(myCompleted||[]).some((id:any)=>String(id)===String(p.id));
+                    return(
+                      <div key={p.id} style={{...cardS,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setActiveProblem({id:p.id})}>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontWeight:600}}>{p.title}</span>
+                            <Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
+                            {done&&<Tag c={C.green}>✓ Solved</Tag>}
+                          </div>
+                        </div>
+                        {isOfficer&&<div style={{display:"flex",gap:6}} onClick={(e:any)=>e.stopPropagation()}>
+                          <SecBtn onClick={()=>setModal({type:"editProb",prob:p})} style={{padding:"5px 10px",fontSize:12}}>Edit</SecBtn>
+                          <OutBtn danger onClick={()=>{if(window.confirm("Delete this problem? It will also be removed from any units."))upd((d:any)=>({...d,problems:(d.problems||[]).filter((x:any)=>x.id!==p.id),units:(d.units||[]).map((u:any)=>({...u,problemIds:(u.problemIds||[]).filter((id:any)=>id!==p.id)}))}),{action:`Deleted problem "${p.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Delete</OutBtn>
                         </div>}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                {problemSearch&&(data.problems||[]).filter((p:any)=>p.title.toLowerCase().includes(problemSearch.toLowerCase())||p.desc.toLowerCase().includes(problemSearch.toLowerCase())).length===0&&<p style={{color:C.muted,fontSize:13}}>No problems match "{problemSearch}".</p>}
               </>
             )}
           </div>
@@ -916,7 +1120,7 @@ export default function App(){
         ):<LeaderboardPage data={data} user={user}/>)}
 
         {page==="forum"&&<ForumPage user={user} isGuest={isGuest} isOfficer={isOfficer}/>}
-        {page==="officers"&&isOfficer&&<OfficersPage data={data} upd={upd} isDev={isDev}/>}
+        {page==="officers"&&isOfficer&&<OfficersPage data={data} upd={upd} isDev={isDev} user={user}/>}
 
         {page==="members"&&isDev&&(
           <div>
@@ -940,6 +1144,7 @@ export default function App(){
       </div>
       {modal&&<ModalBox modal={modal} setModal={setModal} data={data} upd={upd} isDev={isDev}/>}
       <BugReportBtn user={user}/>
+      <ContactOfficersBtn user={user}/>
     </div>
   );
 }
@@ -1002,7 +1207,7 @@ function CodeEditor({code,onChange,lang}:any){
       onChange(nv);
       const pos = start+1+indent.length+extraIndent.length;
       requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos;});
-    } else if(OPEN_PAIRS[e.key]){
+    } else if(OPEN_PAIRS.has(e.key)){
       e.preventDefault();
       const close = PAIRS[e.key];
       const nv = val.slice(0,start)+e.key+close+val.slice(end);
@@ -1247,12 +1452,12 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
 
   const addLink=()=>{
     if(!newLink.title||!newLink.url)return;
-    updateNode((f:any)=>({...f,items:[...(f.items||[]),{id:Date.now(),title:newLink.title,url:newLink.url}]}));
+    updateNode((f:any)=>({...f,items:[...(f.items||[]),{id:uid(),title:newLink.title,url:newLink.url}]}));
     setNewLink({title:"",url:""});setAddingLink(false);
   };
   const addSubFolder=()=>{
     if(!newFolderName.trim())return;
-    updateNode((f:any)=>({...f,children:[...(f.children||[]),{id:`f${Date.now()}`,title:newFolderName.trim(),isFolder:true,children:[],items:[]}]}));
+    updateNode((f:any)=>({...f,children:[...(f.children||[]),{id:`f${uid()}`,title:newFolderName.trim(),isFolder:true,children:[],items:[]}]}));
     setNewFolderName("");setAddingFolder(false);
   };
   const removeLink=(id:any)=>updateNode((f:any)=>({...f,items:(f.items||[]).filter((i:any)=>i.id!==id)}));
@@ -1314,12 +1519,46 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
   );
 }
 
+function ImportantLinksBox({data,upd,isOfficer}:any){
+  const [adding,setAdding]=useState(false);
+  const [nl,setNl]=useState({title:"",url:""});
+  const links=data.importantLinks||[];
+  const add=()=>{
+    if(!nl.title.trim()||!nl.url.trim())return;
+    upd((d:any)=>({...d,importantLinks:[...(d.importantLinks||[]),{id:uid(),title:nl.title.trim(),url:nl.url.trim()}]}),{action:`Added important link "${nl.title.trim()}"`});
+    setNl({title:"",url:""});setAdding(false);
+  };
+  const remove=(id:any)=>upd((d:any)=>({...d,importantLinks:(d.importantLinks||[]).filter((l:any)=>l.id!==id)}),{action:"Removed an important link"});
+  if(!links.length&&!isOfficer)return null;
+  return(
+    <div style={{...cardS,borderLeft:`3px solid ${C.orange}`,marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:links.length?10:0}}>
+        <span style={{fontWeight:700,fontSize:14}}>⭐ Important Links</span>
+        {isOfficer&&<button onClick={()=>setAdding(a=>!a)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,fontWeight:600}}>{adding?"Cancel":"+ Add link"}</button>}
+      </div>
+      {links.map((l:any)=>(
+        <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.border}`}}>
+          <a href={l.url} target="_blank" rel="noreferrer" style={{color:C.text,fontSize:13,fontWeight:500,textDecoration:"none"}}>🔗 {l.title}</a>
+          {isOfficer&&<button onClick={()=>remove(l.id)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:15}}>×</button>}
+        </div>
+      ))}
+      {adding&&(
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+          <input style={inp} placeholder="Link title" value={nl.title} onChange={(e:any)=>setNl((v:any)=>({...v,title:e.target.value}))}/>
+          <input style={inp} placeholder="URL (https://...)" value={nl.url} onChange={(e:any)=>setNl((v:any)=>({...v,url:e.target.value}))}/>
+          <Btn onClick={add} style={{alignSelf:"flex-end",padding:"5px 12px",fontSize:12}}>Add</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResourcesPage({data,upd,isOfficer}:any){
   const [showNew,setShowNew]=useState(false);
   const [name,setName]=useState("");
   const add=()=>{
     if(!name.trim())return;
-    upd((d:any)=>({...d,resources:[...(d.resources||[]),{id:`f${Date.now()}`,title:name.trim(),isFolder:true,children:[],items:[]}]}));
+    upd((d:any)=>({...d,resources:[...(d.resources||[]),{id:`f${uid()}`,title:name.trim(),isFolder:true,children:[],items:[]}]}));
     setName("");setShowNew(false);
   };
   return(
@@ -1328,6 +1567,7 @@ function ResourcesPage({data,upd,isOfficer}:any){
         <h2 style={{margin:0}}>Resources</h2>
         {isOfficer&&<SecBtn onClick={()=>setShowNew(true)}>+ New folder</SecBtn>}
       </div>
+      <ImportantLinksBox data={data} upd={upd} isOfficer={isOfficer}/>
       {showNew&&(
         <div style={{...cardS,display:"flex",gap:8,alignItems:"center"}}>
           <input style={inp} value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Folder name" onKeyDown={(e:any)=>e.key==="Enter"&&add()} autoFocus/>
@@ -1343,7 +1583,7 @@ function ResourcesPage({data,upd,isOfficer}:any){
   );
 }
 
-function OfficersPage({data,upd,isDev}:any){
+function OfficersPage({data,upd,isDev,user}:any){
   const [showTask,setShowTask]=useState(false);
   const [showEvent,setShowEvent]=useState(false);
   const [taskForm,setTaskForm]=useState({title:"",dueDate:"",assignees:[] as string[]});
@@ -1380,12 +1620,12 @@ function OfficersPage({data,upd,isDev}:any){
   const toggleTask=(id:any)=>upd((d:any)=>({...d,officerTasks:(d.officerTasks||[]).map((t:any)=>t.id===id?{...t,done:!t.done}:t)}));
   const addTask=()=>{
     if(!taskForm.title)return;
-    upd((d:any)=>({...d,officerTasks:[...(d.officerTasks||[]),{id:Date.now(),title:taskForm.title,dueDate:taskForm.dueDate,assignees:taskForm.assignees,done:false}]}));
+    upd((d:any)=>({...d,officerTasks:[...(d.officerTasks||[]),{id:uid(),title:taskForm.title,dueDate:taskForm.dueDate,assignees:taskForm.assignees,done:false}]}));
     setTaskForm({title:"",dueDate:"",assignees:[]});setShowTask(false);
   };
   const addEvent=()=>{
     if(!eventForm.title||!eventForm.date)return;
-    upd((d:any)=>({...d,officerEvents:[...(d.officerEvents||[]),{id:Date.now(),...eventForm}]}));
+    upd((d:any)=>({...d,officerEvents:[...(d.officerEvents||[]),{id:uid(),...eventForm}]}));
     setEventForm({title:"",date:"",time:"2:40 PM",desc:""});setShowEvent(false);
   };
   const toggleAssignee=(name:string)=>setTaskForm((f:any)=>({...f,assignees:f.assignees.includes(name)?f.assignees.filter((a:string)=>a!==name):[...f.assignees,name]}));
@@ -1533,7 +1773,124 @@ function OfficersPage({data,upd,isDev}:any){
           </div>
         ))}
       </div>
+      <MessagesInbox user={user}/>
+      <AuditLogPanel/>
     </div>
+  );
+}
+
+function MessagesInbox({user}:any){
+  const [msgs,setMsgs]=useState<any[]>([]);
+  const [tab,setTab]=useState("open");
+  const [replyDraft,setReplyDraft]=useState<any>({});
+  useEffect(()=>{
+    const q=query(collection(db,"contactMessages"),orderBy("createdAt","desc"));
+    const unsub=onSnapshot(q,snap=>setMsgs(snap.docs.map((d:any)=>({id:d.id,...d.data()}))),(err:any)=>console.error(err));
+    return()=>unsub();
+  },[]);
+  const openMsgs=msgs.filter((m:any)=>!m.resolved);
+  const resolvedMsgs=msgs.filter((m:any)=>m.resolved);
+  const sendReply=async(m:any)=>{
+    const text=(replyDraft[m.id]||"").trim();
+    if(!text)return;
+    await updateDoc(doc(db,"contactMessages",m.id),{reply:text,repliedAt:new Date().toISOString(),repliedBy:user?.name||user?.username||"An officer",resolved:true});
+    await addDoc(collection(db,"notifications"),{audience:m.username,title:"An officer replied to your message",body:text.slice(0,100),createdAt:new Date().toISOString(),readBy:[]});
+    setReplyDraft((d:any)=>({...d,[m.id]:""}));
+  };
+  const shown=tab==="open"?openMsgs:resolvedMsgs;
+  return(
+    <div style={{marginTop:32}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <h2 style={{margin:0,fontSize:18}}>Messages</h2>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>setTab("open")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${tab==="open"?C.orange:C.border}`,borderRadius:6,background:tab==="open"?`${C.orange}22`:"transparent",color:tab==="open"?C.orange:C.muted,cursor:"pointer",fontWeight:tab==="open"?700:400}}>Open ({openMsgs.length})</button>
+          <button onClick={()=>setTab("resolved")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${tab==="resolved"?C.green:C.border}`,borderRadius:6,background:tab==="resolved"?`${C.green}22`:"transparent",color:tab==="resolved"?C.green:C.muted,cursor:"pointer",fontWeight:tab==="resolved"?700:400}}>Replied ({resolvedMsgs.length})</button>
+        </div>
+      </div>
+      {shown.length===0&&<p style={{color:C.muted,fontSize:13}}>{tab==="open"?"No open messages.":"No replied messages yet."}</p>}
+      {shown.map((m:any)=>(
+        <div key={m.id} style={{...cardS,borderLeft:`3px solid ${m.resolved?C.green:C.orange}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+            <span style={{fontWeight:600,fontSize:14}}>{m.name}</span>
+            <span style={{fontSize:11,color:C.muted}}>@{m.username}</span>
+            <span style={{fontSize:11,color:C.muted}}>· {new Date(m.createdAt).toLocaleString()}</span>
+          </div>
+          <div style={{fontSize:14,marginBottom:m.resolved?8:10}}>{m.text}</div>
+          {m.resolved?(
+            <div style={{background:`${C.green}18`,borderRadius:6,padding:"8px 10px",fontSize:13}}><strong>Reply ({m.repliedBy}):</strong> {m.reply}</div>
+          ):(
+            <div style={{display:"flex",gap:8}}>
+              <input style={inp} placeholder="Type a reply..." value={replyDraft[m.id]||""} onChange={(e:any)=>setReplyDraft((d:any)=>({...d,[m.id]:e.target.value}))} onKeyDown={(e:any)=>e.key==="Enter"&&sendReply(m)}/>
+              <Btn onClick={()=>sendReply(m)} style={{whiteSpace:"nowrap"}}>Reply</Btn>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AuditLogPanel(){
+  const [logs,setLogs]=useState<any[]>([]);
+  useEffect(()=>{
+    const q=query(collection(db,"auditLog"),orderBy("createdAt","desc"),limit(50));
+    const unsub=onSnapshot(q,snap=>setLogs(snap.docs.map((d:any)=>({id:d.id,...d.data()}))),(err:any)=>console.error(err));
+    return()=>unsub();
+  },[]);
+  return(
+    <div style={{marginTop:32}}>
+      <h2 style={{margin:"0 0 16px",fontSize:18}}>Activity Log</h2>
+      <p style={{color:C.muted,fontSize:12,margin:"-10px 0 14px"}}>Tracks changes officers make — announcements, events, problems, units, links, and membership.</p>
+      {logs.length===0&&<p style={{color:C.muted,fontSize:13}}>No activity recorded yet.</p>}
+      {logs.map((l:any)=>(
+        <div key={l.id} style={{padding:"8px 4px",borderBottom:`1px solid ${C.border}`,fontSize:13}}>
+          <span style={{fontWeight:600}}>{l.actorName}</span> <span style={{color:C.muted}}>{l.action}</span>
+          <div style={{fontSize:11,color:C.muted,marginTop:2}}>{new Date(l.createdAt).toLocaleString()}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ContactOfficersBtn({user}:any){
+  const [open,setOpen]=useState(false);
+  const [text,setText]=useState("");
+  const [sent,setSent]=useState(false);
+  const submit=async()=>{
+    if(!text.trim())return;
+    try{
+      await addDoc(collection(db,"contactMessages"),{text:text.trim(),username:user.username,name:user.name||user.username,createdAt:new Date().toISOString(),resolved:false,reply:""});
+      await addDoc(collection(db,"notifications"),{audience:"officers",title:"New message from a member",body:`${user.name||user.username}: ${text.trim().slice(0,80)}`,createdAt:new Date().toISOString(),readBy:[]});
+      setSent(true);
+      setTimeout(()=>{setSent(false);setText("");setOpen(false);},2200);
+    }catch(e){console.error(e);}
+  };
+  if(!user||user.role==="guest")return null;
+  return(
+    <>
+      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:150,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)"}}>
+        💬 Contact officers
+      </button>
+      {open&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
+          <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
+            <h3 style={{margin:"0 0 8px",fontSize:16}}>Message the officers</h3>
+            <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Questions, ideas, or anything you'd rather not post publicly.</p>
+            {sent?(
+              <div style={{textAlign:"center",padding:"1.5rem",color:C.green,fontWeight:600,fontSize:15}}>✓ Sent! An officer will get back to you.</div>
+            ):(
+              <>
+                <textarea style={{...inp,height:100,resize:"vertical",marginBottom:12}} value={text} onChange={(e:any)=>setText(e.target.value)} placeholder="Type your message..." autoFocus/>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <OutBtn onClick={()=>setOpen(false)}>Cancel</OutBtn>
+                  <Btn onClick={submit} disabled={!text.trim()}>Send</Btn>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1556,7 +1913,7 @@ function AboutPage({data,upd,isOfficer}:any){
   const addImg=async(file:File)=>{const b=await toB64(file);setDraft((d:any)=>({...d,images:[...(d.images||[]),b]}));};
   const about=editing?draft:data.about;
   const contacts=about.contacts||[];
-  const addContact=()=>setDraft((d:any)=>({...d,contacts:[...(d.contacts||[]),{id:Date.now(),label:"",url:""}]}));
+  const addContact=()=>setDraft((d:any)=>({...d,contacts:[...(d.contacts||[]),{id:uid(),label:"",url:""}]}));
   const removeContact=(i:number)=>setDraft((d:any)=>({...d,contacts:(d.contacts||[]).filter((_:any,j:number)=>j!==i)}));
   const updateContact=(i:number,field:string,val:string)=>setDraft((d:any)=>{const cs=[...(d.contacts||[])];cs[i]={...cs[i],[field]:val};return{...d,contacts:cs};});
   return(
@@ -1726,7 +2083,8 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
             <Tag c={diffColor[prob.difficulty]}>{prob.difficulty}</Tag>
             {completed&&<Tag c={C.green}>✓ Solved</Tag>}
           </div>
-          <div style={{fontSize:15,lineHeight:1.7,marginBottom:20}}>{prob.desc}</div>
+          <div style={{fontSize:15,lineHeight:1.7,marginBottom:prob.image?12:20}}>{prob.desc}</div>
+          {prob.image&&<img src={prob.image} alt="" style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,marginBottom:20,border:`1px solid ${C.border}`,background:C.bgInput}}/>}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {prob.choices.map((choice:string,i:number)=>{
               const isSelected=selected===i;
@@ -1799,10 +2157,13 @@ function LeaderboardPage({data,user}:any){
 function ModalBox({modal,setModal,data,upd,isDev}:any){
   const isEditUnit=modal&&modal.type==="editUnit";
   const isEditCodingQ=modal&&modal.type==="editCodingQ";
+  const isEditProb=modal&&modal.type==="editProb";
   const editUnit=isEditUnit?modal.unit:null;
   const editCQ=isEditCodingQ?modal.cq:null;
+  const editProb=isEditProb?modal.prob:null;
+  const probModalOpen=modal==="prob"||isEditProb;
   const [selProbs,setSelProbs]=useState(editUnit?[...editUnit.problemIds]:[]);
-  const [f,setF]=useState<any>({difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
+  const [f,setF]=useState<any>(editProb?{difficulty:editProb.difficulty,choices:[...editProb.choices],answer:editProb.answer,image:editProb.image||"",selectedProblemIds:[],title:editProb.title,body:"",date:"",time:"2:40 PM",location:"",desc:editProb.desc,url:""}:{difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
   const [cqForm,setCqForm]=useState<any>(editCQ?{...editCQ,testCases:[...(editCQ.testCases||[])],starterCodes:editCQ.starterCodes||{}}:{title:"",difficulty:"Easy",language:"Java",desc:"",starterCodes:{},testCases:[{input:"",expected:""}]});
   const set=(patch:any)=>setF((prev:any)=>({...prev,...patch}));
   const setChoice=(i:number,v:string)=>setF((p:any)=>{const c=[...p.choices];c[i]=v;return{...p,choices:c};});
@@ -1832,6 +2193,78 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     );
   }
 
+  if(modal==="importCsv"){
+    const [csvUrl,setCsvUrl]=useState("");
+    const [csvErr,setCsvErr]=useState("");
+    const [busy,setBusy]=useState(false);
+    const [preview,setPreview]=useState<any[]|null>(null);
+    const ANSWER_MAP:any={A:0,B:1,C:2,D:3,"1":0,"2":1,"3":2,"4":3};
+    const load=async()=>{
+      setCsvErr("");setBusy(true);setPreview(null);
+      try{
+        const res=await fetch(csvUrl);
+        if(!res.ok)throw new Error(`Could not fetch that URL (status ${res.status}).`);
+        const text=await res.text();
+        const rows=parseCSV(text);
+        if(rows.length<2)throw new Error("No data rows found in that sheet.");
+        const [header,...body]=rows;
+        const idx=(name:string)=>header.findIndex((h:string)=>h.trim().toLowerCase()===name);
+        const cTitle=idx("title"),cDiff=idx("difficulty"),cQ=idx("question"),
+          cA=idx("choice a"),cB=idx("choice b"),cC=idx("choice c"),cD=idx("choice d"),cAns=idx("correct answer");
+        if(cTitle===-1||cQ===-1||cA===-1||cB===-1||cAns===-1){
+          throw new Error("Expected columns: Title, Difficulty, Question, Choice A, Choice B, Choice C, Choice D, Correct Answer.");
+        }
+        const parsed=body.map((r:string[])=>{
+          const rawAns=(r[cAns]||"").trim().toUpperCase();
+          return{
+            id:uid(),
+            title:(r[cTitle]||"").trim(),
+            difficulty:["Easy","Medium","Hard"].includes((r[cDiff]||"").trim())?(r[cDiff]||"").trim():"Easy",
+            desc:(r[cQ]||"").trim(),
+            choices:[r[cA]||"",r[cB]||"",r[cC]||"",r[cD]||""].map((c:string)=>c.trim()),
+            answer:ANSWER_MAP[rawAns]??0,
+            image:"",
+          };
+        }).filter((p:any)=>p.title&&p.desc);
+        if(parsed.length===0)throw new Error("No valid rows found — check that Title and Question are filled in.");
+        setPreview(parsed);
+      }catch(e:any){
+        setCsvErr(e.message||"Import failed. Make sure the sheet is published to the web as CSV and is publicly viewable.");
+      }
+      setBusy(false);
+    };
+    const doImport=()=>{
+      if(!preview)return;
+      upd((d:any)=>({...d,problems:[...(d.problems||[]),...preview]}),{action:`Imported ${preview.length} problem(s) from Google Sheets`});
+      close();
+    };
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:520,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+          <h3 style={{margin:"0 0 8px",fontSize:16}}>Import from Google Sheets</h3>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 12px",lineHeight:1.5}}>
+            In your sheet: <strong>File → Share → Publish to web</strong>, choose the sheet, pick <strong>CSV</strong>, and paste the link below.
+            Columns needed: <code>Title, Difficulty, Question, Choice A, Choice B, Choice C, Choice D, Correct Answer</code> (Correct Answer as A/B/C/D or 1-4).
+          </p>
+          <input style={{...inp,marginBottom:10}} value={csvUrl} onChange={(e:any)=>setCsvUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"/>
+          {csvErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {csvErr}</div>}
+          {!preview&&<div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={load} disabled={!csvUrl.trim()||busy}>{busy?"Loading...":"Preview import"}</Btn></div>}
+          {preview&&<>
+            <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:12}}>
+              {preview.map((p:any)=>(
+                <div key={p.id} style={{padding:"6px 4px",borderBottom:`1px solid ${C.border}`,fontSize:13}}>
+                  <strong>{p.title}</strong> <Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
+                </div>
+              ))}
+            </div>
+            <p style={{fontSize:12,color:C.orange,margin:"0 0 12px"}}>{preview.length} problem(s) ready to import.</p>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={()=>setPreview(null)}>Back</OutBtn><Btn onClick={doImport}>Import {preview.length} problem(s)</Btn></div>
+          </>}
+        </div>
+      </div>
+    );
+  }
+
   if(isEditCodingQ||modal==="codingQ"){
     const addTC=()=>setCqForm((f:any)=>({...f,testCases:[...f.testCases,{input:"",expected:""}]}));
     const removeTC=(i:number)=>setCqForm((f:any)=>({...f,testCases:f.testCases.filter((_:any,j:number)=>j!==i)}));
@@ -1845,7 +2278,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       if(filledTC.length===0){setCqErr("Add at least one complete test case (input and expected output).");return;}
       const cleanedForm={...cqForm,testCases:cqForm.testCases.filter((tc:any)=>tc.input.trim()&&tc.expected.trim())};
       if(isEditCodingQ){upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).map((q:any)=>q.id===editCQ.id?{...cleanedForm,id:editCQ.id}:q)}));}
-      else{upd((d:any)=>({...d,codingQuestions:[...(d.codingQuestions||[]),{...cleanedForm,id:Date.now()}]}));}
+      else{upd((d:any)=>({...d,codingQuestions:[...(d.codingQuestions||[]),{...cleanedForm,id:uid()}]}));}
       close();
     };
     return(
@@ -1899,38 +2332,50 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
   }
 
   const [formErr,setFormErr]=useState<string>("");
+  const notify=(audience:string,title:string,body:string)=>{
+    addDoc(collection(db,"notifications"),{audience,title,body,createdAt:new Date().toISOString(),readBy:[]}).catch((e:any)=>console.error("Notify failed",e));
+  };
   const submit=()=>{
     setFormErr("");
     if(modal==="ann"){
       if(!f.title.trim()){setFormErr("Title is required.");return;}
       if(!f.body.trim()){setFormErr("Body text is required.");return;}
-      upd((d:any)=>({...d,announcements:[...(d.announcements||[]),{id:Date.now(),title:f.title.trim(),body:f.body.trim(),date:new Date().toISOString().slice(0,10),image:f.image||""}]}));
+      upd((d:any)=>({...d,announcements:[...(d.announcements||[]),{id:uid(),title:f.title.trim(),body:f.body.trim(),date:new Date().toISOString().slice(0,10),image:f.image||""}]}),{action:`Posted announcement "${f.title.trim()}"`});
+      notify("all","New announcement",f.title.trim());
     } else if(modal==="evt"){
       if(!f.title.trim()){setFormErr("Title is required.");return;}
       if(!f.date){setFormErr("Date is required.");return;}
-      upd((d:any)=>({...d,events:[...(d.events||[]),{id:Date.now(),title:f.title.trim(),date:f.date,time:f.time||"TBD",location:f.location||"TBD",desc:f.desc||"",image:f.image||""}]}));
-    } else if(modal==="prob"){
+      upd((d:any)=>({...d,events:[...(d.events||[]),{id:uid(),title:f.title.trim(),date:f.date,time:f.time||"TBD",location:f.location||"TBD",desc:f.desc||"",image:f.image||""}]}),{action:`Added event "${f.title.trim()}"`});
+      notify("all","New event",`${f.title.trim()} — ${f.date}`);
+    } else if(probModalOpen){
       if(!f.title.trim()){setFormErr("Problem title is required.");return;}
       if(!f.desc.trim()){setFormErr("Question text is required.");return;}
       const emptyChoice=f.choices.findIndex((c:string)=>!c.trim());
       if(emptyChoice!==-1){setFormErr(`Choice ${String.fromCharCode(65+emptyChoice)} cannot be empty.`);return;}
-      upd((d:any)=>({...d,problems:[...(d.problems||[]),{id:Date.now(),title:f.title.trim(),difficulty:f.difficulty,desc:f.desc.trim(),choices:f.choices.map((c:string)=>c.trim()),answer:Number(f.answer)}]}));
+      const payload={title:f.title.trim(),difficulty:f.difficulty,desc:f.desc.trim(),choices:f.choices.map((c:string)=>c.trim()),answer:Number(f.answer),image:f.image||""};
+      if(isEditProb){
+        upd((d:any)=>({...d,problems:(d.problems||[]).map((p:any)=>p.id===editProb.id?{...p,...payload}:p)}),{action:`Edited problem "${payload.title}"`});
+      }else{
+        upd((d:any)=>({...d,problems:[...(d.problems||[]),{id:uid(),...payload}]}),{action:`Added problem "${payload.title}"`});
+      }
     } else if(modal==="unit"){
       if(!f.title.trim()){setFormErr("Unit title is required.");return;}
       if(!f.selectedProblemIds.length){setFormErr("Select at least one problem.");return;}
-      upd((d:any)=>({...d,units:[...(d.units||[]),{id:Date.now(),title:f.title.trim(),desc:f.desc||"",problemIds:f.selectedProblemIds}]}));
+      upd((d:any)=>({...d,units:[...(d.units||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",problemIds:f.selectedProblemIds}]}),{action:`Created unit "${f.title.trim()}"`});
     }
     close();
   };
 
   const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit"};
+  const modalKey=typeof modal==="string"?modal:modal?.type;
+  const modalTitle=isEditProb?"Edit Problem":(titles[modalKey]||"Add");
   const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","evt"].includes(modal)?520:430,maxHeight:"88vh",overflowY:"auto"};
+  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
 
   return(
     <div style={overlay} onClick={close}>
       <div style={box} onClick={(e:any)=>e.stopPropagation()}>
-        <h3 style={{margin:"0 0 16px",fontSize:16}}>{titles[modal]||"Add"}</h3>
+        <h3 style={{margin:"0 0 16px",fontSize:16}}>{modalTitle}</h3>
         {formErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {formErr}</div>}
 
         {modal==="ann"&&<>
@@ -1954,13 +2399,14 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <ImgPick preview={f.image} onPick={(v:string)=>set({image:v})}/>
         </>}
 
-        {modal==="prob"&&<>
+        {probModalOpen&&<>
           <label style={lbl}>Problem title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10,borderColor:(!f.title.trim()&&formErr)?C.red:C.border}} value={f.title} onChange={(e:any)=>set({title:e.target.value})} placeholder="e.g. FizzBuzz"/>
           <label style={lbl}>Difficulty</label>
           <select style={{...inp,marginBottom:10}} value={f.difficulty} onChange={(e:any)=>set({difficulty:e.target.value})}><option>Easy</option><option>Medium</option><option>Hard</option></select>
           <label style={lbl}>Question <span style={{color:C.red}}>*</span></label>
           <textarea style={{...inp,height:72,resize:"vertical",marginBottom:14,borderColor:(!f.desc.trim()&&formErr)?C.red:C.border}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})} placeholder="What is the question?"/>
+          <ImgPick label="Add image to question (optional)" preview={f.image} onPick={(v:string)=>set({image:v})}/>
           <label style={lbl}>Answer choices — select the correct one <span style={{color:C.red}}>*</span></label>
           {[0,1,2,3].map(i=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
             <input type="radio" name="ans" checked={Number(f.answer)===i} onChange={()=>set({answer:i})} style={{accentColor:C.orange,flexShrink:0}}/>
@@ -1989,9 +2435,10 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
 
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
           <OutBtn onClick={close}>Cancel</OutBtn>
-          <Btn onClick={submit}>{modal==="unit"?"Create unit":"Add"}</Btn>
+          <Btn onClick={submit}>{modal==="unit"?"Create unit":isEditProb?"Save changes":"Add"}</Btn>
         </div>
       </div>
     </div>
   );
 }
+
