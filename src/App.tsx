@@ -188,7 +188,7 @@ const initData:any={
     {id:1,title:"Weekly Meeting",date:"2025-09-06",time:"2:40 PM",location:"Room 214",desc:"Regular weekly meeting. Bring your laptops!",image:""},
     {id:2,title:"Hackathon Prep",date:"2025-09-13",time:"2:40 PM",location:"Room 214",desc:"Prepare for upcoming hackathon season.",image:""},
   ],
-  importantLinks:[],
+  pinnedAnnouncementId:null,
   resources:[
     {id:"f1",title:"Meeting Notes",isFolder:true,children:[],items:[{id:1,title:"Meeting Notes — Aug 28",url:"https://docs.google.com",image:""}]},
     {id:"f2",title:"Learning Resources",isFolder:true,children:[],items:[
@@ -856,8 +856,9 @@ export default function App(){
         {navItems.map(p=><button key={p} style={navBtn(page===p)} onClick={()=>setPage(p)}>{navLabels[p]}</button>)}
       </div>
       {(()=>{
-        const latest=(data.announcements||[])[(data.announcements||[]).length-1];
-        if(!latest||dismissedAnnId===latest.id||page==="announcements")return null;
+        const pinned=(data.announcements||[]).find((a:any)=>String(a.id)===String(data.pinnedAnnouncementId));
+        if(!pinned||dismissedAnnId===pinned.id||page==="announcements")return null;
+        const latest=pinned;
         return(
           <div style={{background:`${C.orange}1f`,borderBottom:`1px solid ${C.orange}44`,padding:"10px 1rem",display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:16,flexShrink:0}}>📣</span>
@@ -894,7 +895,6 @@ export default function App(){
               </div>
             )}
             {isGuest&&(<div style={{...cardS,borderLeft:`3px solid ${C.guest}`,marginBottom:24}}><div style={{fontWeight:600,fontSize:14,color:C.guest,marginBottom:4}}>Browsing as Guest</div><div style={{fontSize:13,color:C.muted}}>Sign in or create an account to do practice problems and appear on the leaderboard.</div></div>)}
-            <ImportantLinksBox data={data} upd={upd} isOfficer={isOfficer}/>
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
@@ -928,17 +928,30 @@ export default function App(){
               <h2 style={{margin:0}}>Announcements</h2>
               {isOfficer&&<Btn onClick={()=>setModal("ann")}>+ Add</Btn>}
             </div>
-            {[...(data.announcements||[])].reverse().map((a:any)=>(
-              <div key={a.id} style={{...cardS,borderLeft:`3px solid ${C.orange}`}}>
+            {[...(data.announcements||[])].reverse().map((a:any)=>{
+              const isPinned=String(data.pinnedAnnouncementId)===String(a.id);
+              return(
+              <div key={a.id} style={{...cardS,borderLeft:`3px solid ${isPinned?C.green:C.orange}`}}>
                 {a.image&&<img src={a.image} alt="" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:6,marginBottom:10}}/>}
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <div style={{fontWeight:600,fontSize:15}}>{a.title}</div>
-                  {isOfficer&&<OutBtn danger onClick={()=>{if(window.confirm("Remove this announcement?"))upd((d:any)=>({...d,announcements:(d.announcements||[]).filter((x:any)=>x.id!==a.id)}));}}>Remove</OutBtn>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{fontWeight:600,fontSize:15}}>{a.title}</div>
+                    {isPinned&&<Tag c={C.green}>📌 Pinned to top</Tag>}
+                  </div>
+                  {isOfficer&&<div style={{display:"flex",gap:6,flexShrink:0}}>
+                    {isPinned?(
+                      <SecBtn onClick={()=>upd((d:any)=>({...d,pinnedAnnouncementId:null}),{action:`Unpinned announcement "${a.title}"`})} style={{padding:"5px 10px",fontSize:12}}>Unpin</SecBtn>
+                    ):(
+                      <SecBtn onClick={()=>upd((d:any)=>({...d,pinnedAnnouncementId:a.id}),{action:`Pinned announcement "${a.title}" to top of site`})} style={{padding:"5px 10px",fontSize:12}}>📌 Pin to top</SecBtn>
+                    )}
+                    <OutBtn danger onClick={()=>{if(window.confirm("Remove this announcement?"))upd((d:any)=>({...d,announcements:(d.announcements||[]).filter((x:any)=>x.id!==a.id),pinnedAnnouncementId:isPinned?null:d.pinnedAnnouncementId}),{action:`Removed announcement "${a.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Remove</OutBtn>
+                  </div>}
                 </div>
                 <div style={{fontSize:14,color:C.muted,margin:"8px 0"}}>{a.body}</div>
                 <div style={{fontSize:11,color:C.muted}}>{a.date}</div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -1144,7 +1157,6 @@ export default function App(){
       </div>
       {modal&&<ModalBox modal={modal} setModal={setModal} data={data} upd={upd} isDev={isDev}/>}
       <BugReportBtn user={user}/>
-      <ContactOfficersBtn user={user}/>
     </div>
   );
 }
@@ -1519,40 +1531,6 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
   );
 }
 
-function ImportantLinksBox({data,upd,isOfficer}:any){
-  const [adding,setAdding]=useState(false);
-  const [nl,setNl]=useState({title:"",url:""});
-  const links=data.importantLinks||[];
-  const add=()=>{
-    if(!nl.title.trim()||!nl.url.trim())return;
-    upd((d:any)=>({...d,importantLinks:[...(d.importantLinks||[]),{id:uid(),title:nl.title.trim(),url:nl.url.trim()}]}),{action:`Added important link "${nl.title.trim()}"`});
-    setNl({title:"",url:""});setAdding(false);
-  };
-  const remove=(id:any)=>upd((d:any)=>({...d,importantLinks:(d.importantLinks||[]).filter((l:any)=>l.id!==id)}),{action:"Removed an important link"});
-  if(!links.length&&!isOfficer)return null;
-  return(
-    <div style={{...cardS,borderLeft:`3px solid ${C.orange}`,marginBottom:24}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:links.length?10:0}}>
-        <span style={{fontWeight:700,fontSize:14}}>⭐ Important Links</span>
-        {isOfficer&&<button onClick={()=>setAdding(a=>!a)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,fontWeight:600}}>{adding?"Cancel":"+ Add link"}</button>}
-      </div>
-      {links.map((l:any)=>(
-        <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.border}`}}>
-          <a href={l.url} target="_blank" rel="noreferrer" style={{color:C.text,fontSize:13,fontWeight:500,textDecoration:"none"}}>🔗 {l.title}</a>
-          {isOfficer&&<button onClick={()=>remove(l.id)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:15}}>×</button>}
-        </div>
-      ))}
-      {adding&&(
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
-          <input style={inp} placeholder="Link title" value={nl.title} onChange={(e:any)=>setNl((v:any)=>({...v,title:e.target.value}))}/>
-          <input style={inp} placeholder="URL (https://...)" value={nl.url} onChange={(e:any)=>setNl((v:any)=>({...v,url:e.target.value}))}/>
-          <Btn onClick={add} style={{alignSelf:"flex-end",padding:"5px 12px",fontSize:12}}>Add</Btn>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ResourcesPage({data,upd,isOfficer}:any){
   const [showNew,setShowNew]=useState(false);
   const [name,setName]=useState("");
@@ -1567,7 +1545,6 @@ function ResourcesPage({data,upd,isOfficer}:any){
         <h2 style={{margin:0}}>Resources</h2>
         {isOfficer&&<SecBtn onClick={()=>setShowNew(true)}>+ New folder</SecBtn>}
       </div>
-      <ImportantLinksBox data={data} upd={upd} isOfficer={isOfficer}/>
       {showNew&&(
         <div style={{...cardS,display:"flex",gap:8,alignItems:"center"}}>
           <input style={inp} value={name} onChange={(e:any)=>setName(e.target.value)} placeholder="Folder name" onKeyDown={(e:any)=>e.key==="Enter"&&add()} autoFocus/>
@@ -1773,62 +1750,11 @@ function OfficersPage({data,upd,isDev,user}:any){
           </div>
         ))}
       </div>
-      <MessagesInbox user={user}/>
       <AuditLogPanel/>
     </div>
   );
 }
 
-function MessagesInbox({user}:any){
-  const [msgs,setMsgs]=useState<any[]>([]);
-  const [tab,setTab]=useState("open");
-  const [replyDraft,setReplyDraft]=useState<any>({});
-  useEffect(()=>{
-    const q=query(collection(db,"contactMessages"),orderBy("createdAt","desc"));
-    const unsub=onSnapshot(q,snap=>setMsgs(snap.docs.map((d:any)=>({id:d.id,...d.data()}))),(err:any)=>console.error(err));
-    return()=>unsub();
-  },[]);
-  const openMsgs=msgs.filter((m:any)=>!m.resolved);
-  const resolvedMsgs=msgs.filter((m:any)=>m.resolved);
-  const sendReply=async(m:any)=>{
-    const text=(replyDraft[m.id]||"").trim();
-    if(!text)return;
-    await updateDoc(doc(db,"contactMessages",m.id),{reply:text,repliedAt:new Date().toISOString(),repliedBy:user?.name||user?.username||"An officer",resolved:true});
-    await addDoc(collection(db,"notifications"),{audience:m.username,title:"An officer replied to your message",body:text.slice(0,100),createdAt:new Date().toISOString(),readBy:[]});
-    setReplyDraft((d:any)=>({...d,[m.id]:""}));
-  };
-  const shown=tab==="open"?openMsgs:resolvedMsgs;
-  return(
-    <div style={{marginTop:32}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <h2 style={{margin:0,fontSize:18}}>Messages</h2>
-        <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>setTab("open")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${tab==="open"?C.orange:C.border}`,borderRadius:6,background:tab==="open"?`${C.orange}22`:"transparent",color:tab==="open"?C.orange:C.muted,cursor:"pointer",fontWeight:tab==="open"?700:400}}>Open ({openMsgs.length})</button>
-          <button onClick={()=>setTab("resolved")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${tab==="resolved"?C.green:C.border}`,borderRadius:6,background:tab==="resolved"?`${C.green}22`:"transparent",color:tab==="resolved"?C.green:C.muted,cursor:"pointer",fontWeight:tab==="resolved"?700:400}}>Replied ({resolvedMsgs.length})</button>
-        </div>
-      </div>
-      {shown.length===0&&<p style={{color:C.muted,fontSize:13}}>{tab==="open"?"No open messages.":"No replied messages yet."}</p>}
-      {shown.map((m:any)=>(
-        <div key={m.id} style={{...cardS,borderLeft:`3px solid ${m.resolved?C.green:C.orange}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
-            <span style={{fontWeight:600,fontSize:14}}>{m.name}</span>
-            <span style={{fontSize:11,color:C.muted}}>@{m.username}</span>
-            <span style={{fontSize:11,color:C.muted}}>· {new Date(m.createdAt).toLocaleString()}</span>
-          </div>
-          <div style={{fontSize:14,marginBottom:m.resolved?8:10}}>{m.text}</div>
-          {m.resolved?(
-            <div style={{background:`${C.green}18`,borderRadius:6,padding:"8px 10px",fontSize:13}}><strong>Reply ({m.repliedBy}):</strong> {m.reply}</div>
-          ):(
-            <div style={{display:"flex",gap:8}}>
-              <input style={inp} placeholder="Type a reply..." value={replyDraft[m.id]||""} onChange={(e:any)=>setReplyDraft((d:any)=>({...d,[m.id]:e.target.value}))} onKeyDown={(e:any)=>e.key==="Enter"&&sendReply(m)}/>
-              <Btn onClick={()=>sendReply(m)} style={{whiteSpace:"nowrap"}}>Reply</Btn>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function AuditLogPanel(){
   const [logs,setLogs]=useState<any[]>([]);
@@ -1840,7 +1766,7 @@ function AuditLogPanel(){
   return(
     <div style={{marginTop:32}}>
       <h2 style={{margin:"0 0 16px",fontSize:18}}>Activity Log</h2>
-      <p style={{color:C.muted,fontSize:12,margin:"-10px 0 14px"}}>Tracks changes officers make — announcements, events, problems, units, links, and membership.</p>
+      <p style={{color:C.muted,fontSize:12,margin:"-10px 0 14px"}}>Tracks changes officers make — announcements, events, problems, units, and membership.</p>
       {logs.length===0&&<p style={{color:C.muted,fontSize:13}}>No activity recorded yet.</p>}
       {logs.map((l:any)=>(
         <div key={l.id} style={{padding:"8px 4px",borderBottom:`1px solid ${C.border}`,fontSize:13}}>
@@ -1849,48 +1775,6 @@ function AuditLogPanel(){
         </div>
       ))}
     </div>
-  );
-}
-
-function ContactOfficersBtn({user}:any){
-  const [open,setOpen]=useState(false);
-  const [text,setText]=useState("");
-  const [sent,setSent]=useState(false);
-  const submit=async()=>{
-    if(!text.trim())return;
-    try{
-      await addDoc(collection(db,"contactMessages"),{text:text.trim(),username:user.username,name:user.name||user.username,createdAt:new Date().toISOString(),resolved:false,reply:""});
-      await addDoc(collection(db,"notifications"),{audience:"officers",title:"New message from a member",body:`${user.name||user.username}: ${text.trim().slice(0,80)}`,createdAt:new Date().toISOString(),readBy:[]});
-      setSent(true);
-      setTimeout(()=>{setSent(false);setText("");setOpen(false);},2200);
-    }catch(e){console.error(e);}
-  };
-  if(!user||user.role==="guest")return null;
-  return(
-    <>
-      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:150,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)"}}>
-        💬 Contact officers
-      </button>
-      {open&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
-          <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
-            <h3 style={{margin:"0 0 8px",fontSize:16}}>Message the officers</h3>
-            <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Questions, ideas, or anything you'd rather not post publicly.</p>
-            {sent?(
-              <div style={{textAlign:"center",padding:"1.5rem",color:C.green,fontWeight:600,fontSize:15}}>✓ Sent! An officer will get back to you.</div>
-            ):(
-              <>
-                <textarea style={{...inp,height:100,resize:"vertical",marginBottom:12}} value={text} onChange={(e:any)=>setText(e.target.value)} placeholder="Type your message..." autoFocus/>
-                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                  <OutBtn onClick={()=>setOpen(false)}>Cancel</OutBtn>
-                  <Btn onClick={submit} disabled={!text.trim()}>Send</Btn>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
@@ -2198,6 +2082,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     const [csvErr,setCsvErr]=useState("");
     const [busy,setBusy]=useState(false);
     const [preview,setPreview]=useState<any[]|null>(null);
+    const [skipCount,setSkipCount]=useState(0);
     const ANSWER_MAP:any={A:0,B:1,C:2,D:3,"1":0,"2":1,"3":2,"4":3};
     const load=async()=>{
       setCsvErr("");setBusy(true);setPreview(null);
@@ -2214,6 +2099,10 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
         if(cTitle===-1||cQ===-1||cA===-1||cB===-1||cAns===-1){
           throw new Error("Expected columns: Title, Difficulty, Question, Choice A, Choice B, Choice C, Choice D, Correct Answer.");
         }
+        const norm=(s:string)=>s.trim().toLowerCase().replace(/\s+/g," ");
+        const existingTitles=new Set((data.problems||[]).map((p:any)=>norm(p.title)));
+        const seenInSheet=new Set<string>();
+        let skippedExisting=0,skippedDuplicateRow=0;
         const parsed=body.map((r:string[])=>{
           const rawAns=(r[cAns]||"").trim().toUpperCase();
           return{
@@ -2225,8 +2114,18 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
             answer:ANSWER_MAP[rawAns]??0,
             image:"",
           };
-        }).filter((p:any)=>p.title&&p.desc);
+        }).filter((p:any)=>p.title&&p.desc).filter((p:any)=>{
+          const key=norm(p.title);
+          if(existingTitles.has(key)){skippedExisting++;return false;}
+          if(seenInSheet.has(key)){skippedDuplicateRow++;return false;}
+          seenInSheet.add(key);
+          return true;
+        });
+        if(parsed.length===0&&(skippedExisting||skippedDuplicateRow)){
+          throw new Error(`Nothing new to import — all ${skippedExisting+skippedDuplicateRow} row(s) already exist as problems.`);
+        }
         if(parsed.length===0)throw new Error("No valid rows found — check that Title and Question are filled in.");
+        setSkipCount(skippedExisting+skippedDuplicateRow);
         setPreview(parsed);
       }catch(e:any){
         setCsvErr(e.message||"Import failed. Make sure the sheet is published to the web as CSV and is publicly viewable.");
@@ -2245,6 +2144,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <p style={{color:C.muted,fontSize:13,margin:"0 0 12px",lineHeight:1.5}}>
             In your sheet: <strong>File → Share → Publish to web</strong>, choose the sheet, pick <strong>CSV</strong>, and paste the link below.
             Columns needed: <code>Title, Difficulty, Question, Choice A, Choice B, Choice C, Choice D, Correct Answer</code> (Correct Answer as A/B/C/D or 1-4).
+            Questions with a title that already exists are skipped automatically.
           </p>
           <input style={{...inp,marginBottom:10}} value={csvUrl} onChange={(e:any)=>setCsvUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"/>
           {csvErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {csvErr}</div>}
@@ -2257,8 +2157,9 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
                 </div>
               ))}
             </div>
-            <p style={{fontSize:12,color:C.orange,margin:"0 0 12px"}}>{preview.length} problem(s) ready to import.</p>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={()=>setPreview(null)}>Back</OutBtn><Btn onClick={doImport}>Import {preview.length} problem(s)</Btn></div>
+            <p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{preview.length} new problem(s) ready to import.</p>
+            {skipCount>0&&<p style={{fontSize:12,color:C.muted,margin:"0 0 12px"}}>Skipped {skipCount} row(s) already in your problem set.</p>}
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:skipCount>0?0:8}}><OutBtn onClick={()=>setPreview(null)}>Back</OutBtn><Btn onClick={doImport}>Import {preview.length} problem(s)</Btn></div>
           </>}
         </div>
       </div>
@@ -2441,4 +2342,3 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     </div>
   );
 }
-
