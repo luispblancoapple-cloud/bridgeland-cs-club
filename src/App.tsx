@@ -542,6 +542,15 @@ function ThreadView({thread,user,onBack,isOfficer}:any){
     await updateDoc(doc(db,"forumThreads",thread.id),{replyCount:replies.length+1});
     setReplies((prev:any)=>[...prev,{id:ref.id,...r}]);
     setNewReply("");
+    if(thread.username&&thread.username!==user.username){
+      addDoc(collection(db,"notifications"),{
+        audience:thread.username,
+        title:"New reply to your discussion",
+        body:`${user.name||user.username} replied to "${thread.title}"`,
+        createdAt:new Date().toISOString(),
+        readBy:[],
+      }).catch((e:any)=>console.error("Notify failed",e));
+    }
   };
 
   const startEditReply=(r:any)=>{setEditingReply(r.id);setEditText(r.body);};
@@ -2263,6 +2272,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       if(!f.title.trim()){setFormErr("Unit title is required.");return;}
       if(!f.selectedProblemIds.length){setFormErr("Select at least one problem.");return;}
       upd((d:any)=>({...d,units:[...(d.units||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",problemIds:f.selectedProblemIds}]}),{action:`Created unit "${f.title.trim()}"`});
+      notify("all","New practice unit",f.title.trim());
     }
     close();
   };
