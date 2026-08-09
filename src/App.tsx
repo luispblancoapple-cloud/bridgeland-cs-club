@@ -1800,6 +1800,7 @@ function OfficerImgPick({image,onPick}:any){
 function AboutPage({data,upd,isOfficer}:any){
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState<any>(null);
+  const [leadView,setLeadView]=useState<"Workshop Lead"|"Competition Lead">("Workshop Lead");
   const ref=useRef<any>();
   const startEdit=()=>{setDraft(JSON.parse(JSON.stringify(data.about)));setEditing(true);};
   const save=()=>{upd((d:any)=>({...d,about:draft}));setEditing(false);};
@@ -1835,14 +1836,23 @@ function AboutPage({data,upd,isOfficer}:any){
         </div>
       </div>
 <div style={{marginBottom:24}}>
-  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:10}}>
     <h3 style={{margin:0,fontSize:14,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Officers</h3>
-    {/* Updated default role to "Competition Lead" when adding a new person */}
     {editing&&<SecBtn onClick={()=>setDraft((d:any)=>({...d,officers:[...(d.officers||[]),{name:"",role:"Competition Lead",image:""}]}))} style={{fontSize:12,padding:"5px 12px"}}>+ Add officer</SecBtn>}
   </div>
+  {!editing&&(
+    <div style={{display:"inline-flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border}`,marginBottom:14}}>
+      {(["Workshop Lead","Competition Lead"] as const).map(r=>(
+        <button key={r} onClick={()=>setLeadView(r)} style={{padding:"6px 16px",fontSize:12,fontWeight:leadView===r?700:400,border:"none",cursor:"pointer",background:leadView===r?C.orange:C.bgInput,color:leadView===r?"#fff":C.muted,transition:"all 0.15s"}}>{r}s</button>
+      ))}
+    </div>
+  )}
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:10}}>
-    {(about.officers||[]).map((o:any,i:number)=>(
-      <div key={i} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
+    {(about.officers||[]).filter((o:any)=>editing||o.role==="President"||o.role==="Vice President"||o.role===leadView).map((o:any,i:number)=>{
+      const officers=(about.officers||[]);
+      const realIndex=officers.indexOf(o);
+      return(
+      <div key={realIndex} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
         {o.image?<img src={o.image} alt={o.name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.orange}`,margin:"0 auto 8px",display:"block"}}/>
           : <div style={{width:56,height:56,borderRadius:"50%",background:`${C.orange}33`,border:`2px solid ${C.orange}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontWeight:700,fontSize:20,color:C.orange}}>{(o.name||"?")[0]}</div>}
         
@@ -1884,7 +1894,8 @@ function AboutPage({data,upd,isOfficer}:any){
           </>
         )}
       </div>
-    ))}
+      );
+    })}
   </div>
 </div>
       <div>
