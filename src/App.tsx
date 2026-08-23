@@ -978,7 +978,7 @@ export default function App(){
   const [page,setPage]=useState("home");
   const [loginForm,setLoginForm]=useState({username:"",password:""});
   const [loginErr,setLoginErr]=useState("");
-  const [regForm,setRegForm]=useState({username:"",password:"",name:"",email:"",phone:""});
+  const [regForm,setRegForm]=useState({username:"",password:"",name:""});
   const [regErr,setRegErr]=useState("");
   const [showReg,setShowReg]=useState(false);
   const [modal,setModal]=useState<any>(null);
@@ -1069,7 +1069,7 @@ export default function App(){
     if(regForm.password.length<8){setRegErr("Password must be at least 8 characters.");return;}
     if(data.users.find((u:any)=>u.username===regForm.username)||regForm.username===DEV_ACCOUNT.username){setRegErr("Username taken.");return;}
     const passwordHash=await hashPassword(regForm.password);
-    const nu={username:regForm.username,passwordHash,name:regForm.name,email:regForm.email||"",phone:regForm.phone||"",role:"member",notifyEmail:!!regForm.email,notifyText:false,createdAt:new Date().toISOString()};
+    const nu={username:regForm.username,passwordHash,name:regForm.name,role:"member",createdAt:new Date().toISOString()};
     upd((d:any)=>({...d,users:[...d.users,nu]}),{action:`${nu.name} (@${nu.username}) joined the club`,actorName:nu.name,actorUsername:nu.username});
     setUser(nu);setRegErr("");
   };
@@ -1118,11 +1118,7 @@ export default function App(){
             <label style={lbl}>Username</label>
             <input style={{...inp,marginBottom:12}} value={regForm.username} onChange={(e:any)=>setRegForm((f:any)=>({...f,username:e.target.value}))} placeholder="Choose a username"/>
             <label style={lbl}>Password</label>
-            <input style={{...inp,marginBottom:12}} type="password" value={regForm.password} onChange={(e:any)=>setRegForm((f:any)=>({...f,password:e.target.value}))} placeholder="At least 8 characters"/>
-            <label style={lbl}>Email (optional — for notifications)</label>
-            <input style={{...inp,marginBottom:12}} type="email" value={regForm.email} onChange={(e:any)=>setRegForm((f:any)=>({...f,email:e.target.value}))} placeholder="you@example.com"/>
-            <label style={lbl}>Phone (optional — for text notifications)</label>
-            <input style={{...inp,marginBottom:16}} type="tel" value={regForm.phone} onChange={(e:any)=>setRegForm((f:any)=>({...f,phone:e.target.value}))} placeholder="(555) 555-5555"/>
+            <input style={{...inp,marginBottom:16}} type="password" value={regForm.password} onChange={(e:any)=>setRegForm((f:any)=>({...f,password:e.target.value}))} placeholder="At least 8 characters"/>
             {regErr&&<p style={{color:C.red,fontSize:13,margin:"0 0 12px"}}>{regErr}</p>}
             <Btn style={{width:"100%",padding:"10px"}} onClick={register}>Create account</Btn>
             <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:12}}><span style={{color:C.orange,cursor:"pointer"}} onClick={()=>setShowReg(false)}>Back to sign in</span></p>
