@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
+import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAJqtx5OvDPp4Xr_rTvq4QvlJYWgj0MtFs",
@@ -12,7 +12,18 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
-const DATA_DOC = doc(db, "club", "data");
+// ARCHITECTURE: previously EVERYTHING (every user, problem, announcement, event...)
+// lived in one single document (club/data). That has two serious failure modes:
+// 1) that one document has a hard 1MB Firestore size limit shared by the whole club,
+//    and 2) any single write touches the whole document, so a bug (or a transient
+// error) in any one save could wipe unrelated data for everyone. Splitting each kind
+// of item into its own collection/document removes both problems structurally: a
+// new member registering can never touch problems, events, or other members' data,
+// and each entity has effectively its own size budget.
+const ABOUT_DOC = doc(db, "settings", "about");
+const SITE_DOC = doc(db, "settings", "site");
+const PLANNER_DOC = doc(db, "settings", "officerPlanner");
+const LEGACY_DATA_DOC = doc(db, "club", "data"); // old single-document location — read-only now, used only for one-time migration
 
 // SECURITY NOTE: passwords are never stored or shipped in plaintext. We only ever
 // keep/compare a salted SHA-256 hash. See hashPassword() below. The dev account's
@@ -229,34 +240,255 @@ const initData:any={
   },
 };
 
-// BUGFIX: the old saveData() called setDoc(DATA_DOC, wholeLocalCopy) on every single
-// change. That replaces the ENTIRE shared document with whatever this one browser tab
-// happened to have in memory. If two people made changes around the same time (very
-// common right when a new member registers while an officer is also editing something),
-// whoever saved second would silently wipe out the other person's change — which is
-// what looked like "the website resetting". Fix: only send the fields that actually
-// changed, using updateDoc, so unrelated concurrent edits from other tabs are preserved.
+// Each kind of item (problems, units, announcements, events, coding questions, users)
+// lives in its own Firestore collection, one document per item, keyed by that item's
+// id (username for users). "about", "site settings" (resources + pinned announcement),
+// and "officer planner" data are small and only ever touched by officers, so they each
+// get one small isolated settings document. saveData() diffs the previous vs next
+// app-shaped state and only writes the specific documents that actually changed —
+// never a blind whole-collection or whole-app overwrite.
+const ARRAY_COLLECTIONS:[string,string,string][]=[
+  ["problems","problems","id"],
+  ["codingQuestions","codingQuestions","id"],
+  ["units","units","id"],
+  ["announcements","announcements","id"],
+  ["events","events","id"],
+  ["users","users","username"],
+];
+const PROGRESS_FIELDS:[string,string][]=[
+  ["completions","completedProblemIds"],
+  ["codingSubmissions","codingSubmissions"],
+  ["attempts","attempts"],
+  ["streaks","streak"],
+];
 async function saveData(prev:any,next:any){
   if(!next)return;
-  const changed:any={};
-  const keys=new Set([...Object.keys(prev||{}),...Object.keys(next)]);
-  keys.forEach(k=>{ if(JSON.stringify(prev?.[k])!==JSON.stringify(next[k])) changed[k]=next[k]; });
-  if(Object.keys(changed).length===0)return;
+  const ops:Promise<any>[]=[];
+
+  ARRAY_COLLECTIONS.forEach(([key,collName,idField])=>{
+    const prevArr=prev?.[key]||[];
+    const nextArr=next[key]||[];
+    if(JSON.stringify(prevArr)===JSON.stringify(nextArr))return;
+    const prevMap=new Map(prevArr.map((x:any)=>[String(x[idField]),x]));
+    const nextMap=new Map(nextArr.map((x:any)=>[String(x[idField]),x]));
+    prevMap.forEach((_v,id)=>{ if(!nextMap.has(id))ops.push(deleteDoc(doc(db,collName,id as string))); });
+    nextMap.forEach((item,id)=>{
+      const before=prevMap.get(id);
+      if(!before||JSON.stringify(before)!==JSON.stringify(item))ops.push(setDoc(doc(db,collName,id as string),item as any,{merge:true}));
+    });
+  });
+
+  // Per-user progress (completed problems, coding submissions, attempts, streak)
+  // lives as fields on that user's own document — never on anyone else's.
+  PROGRESS_FIELDS.forEach(([key,fieldName])=>{
+    const prevMap=prev?.[key]||{};
+    const nextMap=next[key]||{};
+    if(JSON.stringify(prevMap)===JSON.stringify(nextMap))return;
+    const usernames=new Set([...Object.keys(prevMap),...Object.keys(nextMap)]);
+    usernames.forEach(uname=>{
+      if(JSON.stringify(prevMap[uname])!==JSON.stringify(nextMap[uname])){
+        ops.push(setDoc(doc(db,"users",uname),{[fieldName]:nextMap[uname]??null},{merge:true}));
+      }
+    });
+  });
+
+  // Small, isolated settings documents — each only ever edited by officers, and each
+  // fully separate from everything above, so even a full overwrite here can't touch
+  // problems, units, announcements, events, or any member's account.
+  if(JSON.stringify(prev?.about)!==JSON.stringify(next.about)){
+    ops.push(setDoc(ABOUT_DOC,next.about||{},{merge:true}));
+  }
+  const prevSite={resources:prev?.resources,pinnedAnnouncementId:prev?.pinnedAnnouncementId};
+  const nextSite={resources:next.resources,pinnedAnnouncementId:next.pinnedAnnouncementId};
+  if(JSON.stringify(prevSite)!==JSON.stringify(nextSite)){
+    ops.push(setDoc(SITE_DOC,nextSite,{merge:true}));
+  }
+  const prevPlanner={officerTasks:prev?.officerTasks,officerEvents:prev?.officerEvents,googleCalendarId:prev?.googleCalendarId};
+  const nextPlanner={officerTasks:next.officerTasks,officerEvents:next.officerEvents,googleCalendarId:next.googleCalendarId};
+  if(JSON.stringify(prevPlanner)!==JSON.stringify(nextPlanner)){
+    ops.push(setDoc(PLANNER_DOC,nextPlanner,{merge:true}));
+  }
+
+  if(ops.length===0)return;
   try{
-    await updateDoc(DATA_DOC,changed);
+    await Promise.all(ops);
   }catch(e){
-    // Doc may not exist yet (very first write) — updateDoc fails if there's nothing
-    // to update, so fall back to a merge-write in that one case only.
-    try{await setDoc(DATA_DOC,next,{merge:true});}catch(e2){console.error("Save failed",e2);}
+    console.error("Save failed — some changes may not have been written:",e);
+    if(typeof window!=="undefined")window.alert("⚠ Your last change could not be saved. Please refresh and try again, or contact the developer.");
   }
 }
+
+// One-time setup: if this is a brand-new deployment (no users yet anywhere), either
+// migrate data out of the old single "club/data" document if it still has anything
+// in it, or seed the small set of default demo content. Safe to call on every load —
+// it only ever writes if the new users collection is genuinely empty.
+async function bootstrapClubData(){
+  try{
+    const usersSnap=await getDocs(collection(db,"users"));
+    if(!usersSnap.empty)return; // already has real data — never touch it
+    const legacySnap=await getDoc(LEGACY_DATA_DOC);
+    const ops:Promise<any>[]=[];
+    if(legacySnap.exists()&&(legacySnap.data()?.users?.length||legacySnap.data()?.problems?.length)){
+      const legacy:any=legacySnap.data();
+      (legacy.problems||[]).forEach((p:any)=>ops.push(setDoc(doc(db,"problems",String(p.id)),p,{merge:true})));
+      (legacy.codingQuestions||[]).forEach((q:any)=>ops.push(setDoc(doc(db,"codingQuestions",String(q.id)),q,{merge:true})));
+      (legacy.units||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"units",String(u.id)),u,{merge:true})));
+      (legacy.announcements||[]).forEach((a:any)=>ops.push(setDoc(doc(db,"announcements",String(a.id)),a,{merge:true})));
+      (legacy.events||[]).forEach((e:any)=>ops.push(setDoc(doc(db,"events",String(e.id)),e,{merge:true})));
+      (legacy.users||[]).filter((u:any)=>u.username!==DEV_ACCOUNT.username).forEach((u:any)=>{
+        const merged={...u,
+          completedProblemIds:(legacy.completions||{})[u.username]||[],
+          codingSubmissions:(legacy.codingSubmissions||{})[u.username]||{},
+          attempts:(legacy.attempts||{})[u.username]||{},
+          streak:(legacy.streaks||{})[u.username]||{},
+        };
+        ops.push(setDoc(doc(db,"users",u.username),merged,{merge:true}));
+      });
+      if(legacy.about)ops.push(setDoc(ABOUT_DOC,legacy.about,{merge:true}));
+      ops.push(setDoc(SITE_DOC,{resources:legacy.resources||[],pinnedAnnouncementId:legacy.pinnedAnnouncementId||null},{merge:true}));
+      ops.push(setDoc(PLANNER_DOC,{officerTasks:legacy.officerTasks||[],officerEvents:legacy.officerEvents||[],googleCalendarId:legacy.googleCalendarId||""},{merge:true}));
+      await Promise.all(ops);
+      console.log("Migrated legacy club/data into per-item collections.");
+    }else{
+      (initData.problems||[]).forEach((p:any)=>ops.push(setDoc(doc(db,"problems",String(p.id)),p,{merge:true})));
+      (initData.codingQuestions||[]).forEach((q:any)=>ops.push(setDoc(doc(db,"codingQuestions",String(q.id)),q,{merge:true})));
+      (initData.units||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"units",String(u.id)),u,{merge:true})));
+      (initData.announcements||[]).forEach((a:any)=>ops.push(setDoc(doc(db,"announcements",String(a.id)),a,{merge:true})));
+      (initData.events||[]).forEach((e:any)=>ops.push(setDoc(doc(db,"events",String(e.id)),e,{merge:true})));
+      ops.push(setDoc(ABOUT_DOC,initData.about,{merge:true}));
+      ops.push(setDoc(SITE_DOC,{resources:initData.resources,pinnedAnnouncementId:null},{merge:true}));
+      ops.push(setDoc(PLANNER_DOC,{officerTasks:[],officerEvents:[],googleCalendarId:""},{merge:true}));
+      await Promise.all(ops);
+    }
+  }catch(e){console.error("Bootstrap check failed",e);}
+}
+
+// BACKUPS. Two layers, both free (no Blaze plan needed):
+// 1) Manual export — an officer downloads the whole club as a .json file, on demand.
+// 2) Automatic snapshots — the app itself writes a full copy into Firestore roughly
+//    once a day (checked whenever an officer is signed in), so there's always a
+//    recent recovery point even if nobody remembers to export.
+// A snapshot is NOT one document (that's the bug we just fixed) — it mirrors the same
+// per-item structure as the live data, under backups/{backupId}/{collection}/{itemId},
+// so a snapshot can never hit the 1MB limit either, no matter how big the club gets.
+const BACKUP_COLLECTIONS=["problems","codingQuestions","units","announcements","events"];
+async function fetchAllForBackup(){
+  const [probSnap,cqSnap,unitSnap,annSnap,evtSnap,userSnap,aboutSnap,siteSnap,plannerSnap]=await Promise.all([
+    getDocs(collection(db,"problems")),getDocs(collection(db,"codingQuestions")),getDocs(collection(db,"units")),
+    getDocs(collection(db,"announcements")),getDocs(collection(db,"events")),getDocs(collection(db,"users")),
+    getDoc(ABOUT_DOC),getDoc(SITE_DOC),getDoc(PLANNER_DOC),
+  ]);
+  return{
+    exportedAt:new Date().toISOString(),
+    problems:probSnap.docs.map(d=>d.data()),codingQuestions:cqSnap.docs.map(d=>d.data()),units:unitSnap.docs.map(d=>d.data()),
+    announcements:annSnap.docs.map(d=>d.data()),events:evtSnap.docs.map(d=>d.data()),users:userSnap.docs.map(d=>d.data()),
+    about:aboutSnap.exists()?aboutSnap.data():null,site:siteSnap.exists()?siteSnap.data():null,officerPlanner:plannerSnap.exists()?plannerSnap.data():null,
+  };
+}
+async function createBackupSnapshot(triggeredBy:string){
+  const payload=await fetchAllForBackup();
+  const backupId=payload.exportedAt.replace(/[:.]/g,"-");
+  const ops:Promise<any>[]=[setDoc(doc(db,"backups",backupId),{
+    createdAt:payload.exportedAt,triggeredBy,
+    counts:{problems:payload.problems.length,codingQuestions:payload.codingQuestions.length,units:payload.units.length,announcements:payload.announcements.length,events:payload.events.length,users:payload.users.length},
+  })];
+  payload.problems.forEach((p:any)=>ops.push(setDoc(doc(db,"backups",backupId,"problems",String(p.id)),p)));
+  payload.codingQuestions.forEach((q:any)=>ops.push(setDoc(doc(db,"backups",backupId,"codingQuestions",String(q.id)),q)));
+  payload.units.forEach((u:any)=>ops.push(setDoc(doc(db,"backups",backupId,"units",String(u.id)),u)));
+  payload.announcements.forEach((a:any)=>ops.push(setDoc(doc(db,"backups",backupId,"announcements",String(a.id)),a)));
+  payload.events.forEach((e:any)=>ops.push(setDoc(doc(db,"backups",backupId,"events",String(e.id)),e)));
+  payload.users.forEach((u:any)=>ops.push(setDoc(doc(db,"backups",backupId,"users",u.username),u)));
+  if(payload.about)ops.push(setDoc(doc(db,"backups",backupId,"settings","about"),payload.about));
+  if(payload.site)ops.push(setDoc(doc(db,"backups",backupId,"settings","site"),payload.site));
+  if(payload.officerPlanner)ops.push(setDoc(doc(db,"backups",backupId,"settings","officerPlanner"),payload.officerPlanner));
+  await Promise.all(ops);
+  return backupId;
+}
+async function pruneOldBackups(keep=14){
+  const snap=await getDocs(query(collection(db,"backups"),orderBy("createdAt","desc")));
+  const toDelete=snap.docs.slice(keep);
+  for(const d of toDelete){
+    const backupId=d.id;
+    for(const c of BACKUP_COLLECTIONS){
+      const sub=await getDocs(collection(db,"backups",backupId,c));
+      await Promise.all(sub.docs.map(sd=>deleteDoc(doc(db,"backups",backupId,c,sd.id))));
+    }
+    const usersSub=await getDocs(collection(db,"backups",backupId,"users"));
+    await Promise.all(usersSub.docs.map(sd=>deleteDoc(doc(db,"backups",backupId,"users",sd.id))));
+    await Promise.all([
+      deleteDoc(doc(db,"backups",backupId,"settings","about")).catch(()=>{}),
+      deleteDoc(doc(db,"backups",backupId,"settings","site")).catch(()=>{}),
+      deleteDoc(doc(db,"backups",backupId,"settings","officerPlanner")).catch(()=>{}),
+    ]);
+    await deleteDoc(doc(db,"backups",backupId));
+  }
+}
+// Checked once whenever an officer is signed in — creates a new snapshot only if the
+// most recent one is more than ~20 hours old, so this is effectively once a day
+// without needing a paid Cloud Functions schedule.
+async function maybeAutoBackup(triggeredBy:string){
+  try{
+    const snap=await getDocs(query(collection(db,"backups"),orderBy("createdAt","desc"),limit(1)));
+    const last:any=snap.docs[0]?.data();
+    const lastTime=last?new Date(last.createdAt).getTime():0;
+    if(Date.now()-lastTime<20*60*60*1000)return;
+    await createBackupSnapshot(triggeredBy);
+    pruneOldBackups(14).catch(e=>console.error("Prune failed",e));
+  }catch(e){console.error("Auto backup failed",e);}
+}
+// Restores the live site to exactly match a given snapshot: anything in the backup
+// is written back, and anything currently live that ISN'T in the backup is removed
+// (a true point-in-time restore, not just an overlay).
+async function restoreBackup(backupId:string){
+  const ops:Promise<any>[]=[];
+  for(const collName of [...BACKUP_COLLECTIONS,"users"]){
+    const [liveSnap,backupSnap]=await Promise.all([getDocs(collection(db,collName)),getDocs(collection(db,"backups",backupId,collName))]);
+    const backupIds=new Set(backupSnap.docs.map(d=>d.id));
+    liveSnap.docs.forEach(d=>{ if(!backupIds.has(d.id))ops.push(deleteDoc(doc(db,collName,d.id))); });
+    backupSnap.docs.forEach(d=>ops.push(setDoc(doc(db,collName,d.id),d.data())));
+  }
+  const [aboutSnap,siteSnap,plannerSnap]=await Promise.all([
+    getDoc(doc(db,"backups",backupId,"settings","about")),
+    getDoc(doc(db,"backups",backupId,"settings","site")),
+    getDoc(doc(db,"backups",backupId,"settings","officerPlanner")),
+  ]);
+  if(aboutSnap.exists())ops.push(setDoc(ABOUT_DOC,aboutSnap.data()));
+  if(siteSnap.exists())ops.push(setDoc(SITE_DOC,siteSnap.data()));
+  if(plannerSnap.exists())ops.push(setDoc(PLANNER_DOC,plannerSnap.data()));
+  await Promise.all(ops);
+}
+// Images are stored as base64 text inside one shared Firestore document, which has a
+// hard 1 MiB total size limit shared across EVERY problem/user/announcement/event in
+// the club. A handful of full-size photos can blow past that and start failing every
+// save for everyone. To keep this safe, downscale/compress every image client-side
+// before it's ever stored — this keeps a typical photo to roughly 30-80 KB instead of
+// several MB.
 function toB64(file:File):Promise<string>{
   return new Promise((res,rej)=>{
-    if(file.size>4*1024*1024){rej(new Error("Image too large (max 4MB)"));return;}
-    const r=new FileReader();
-    r.onload=()=>res(r.result as string);
-    r.onerror=rej;
-    r.readAsDataURL(file);
+    if(!file.type.startsWith("image/")){rej(new Error("Please choose an image file."));return;}
+    if(file.size>15*1024*1024){rej(new Error("Image too large (max 15MB before compression).") );return;}
+    const reader=new FileReader();
+    reader.onerror=rej;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>rej(new Error("Could not read that image."));
+      img.onload=()=>{
+        const MAX_DIM=900;
+        let{width,height}=img;
+        if(width>MAX_DIM||height>MAX_DIM){
+          const scale=MAX_DIM/Math.max(width,height);
+          width=Math.round(width*scale);height=Math.round(height*scale);
+        }
+        const canvas=document.createElement("canvas");
+        canvas.width=width;canvas.height=height;
+        const ctx=canvas.getContext("2d");
+        if(!ctx){res(reader.result as string);return;}
+        ctx.drawImage(img,0,0,width,height);
+        res(canvas.toDataURL("image/jpeg",0.75));
+      };
+      img.src=reader.result as string;
+    };
+    reader.readAsDataURL(file);
   });
 }
 
@@ -710,7 +942,20 @@ function runCode(code:string,testCases:any[]){
 }
 
 export default function App(){
-  const [data,setData]=useState(initData);
+  // Each of these mirrors one Firestore collection or settings document — see the
+  // ARCHITECTURE note near the top of the file. `data` below reassembles them into
+  // the exact same shape the rest of the app already expects, so nothing downstream
+  // needs to change.
+  const [problems,setProblems]=useState<any[]>([]);
+  const [codingQuestions,setCodingQuestions]=useState<any[]>([]);
+  const [units,setUnits]=useState<any[]>([]);
+  const [announcements,setAnnouncements]=useState<any[]>([]);
+  const [events,setEvents]=useState<any[]>([]);
+  const [usersList,setUsersList]=useState<any[]>([]);
+  const [about,setAboutState]=useState<any>(initData.about);
+  const [site,setSite]=useState<any>({resources:initData.resources,pinnedAnnouncementId:null});
+  const [officerPlanner,setOfficerPlanner]=useState<any>({officerTasks:[],officerEvents:[],googleCalendarId:""});
+  const [loadedFlags,setLoadedFlags]=useState<any>({});
   const [loading,setLoading]=useState(true);
   const [user,setUser]=useState<any>(null);
   const [page,setPage]=useState("home");
@@ -726,18 +971,46 @@ export default function App(){
   const [problemSearch,setProblemSearch]=useState("");
   const [dismissedAnnId,setDismissedAnnId]=useState<any>(null);
 
+  const data:any={
+    problems,codingQuestions,units,announcements,events,users:usersList,
+    completions:Object.fromEntries(usersList.map((u:any)=>[u.username,u.completedProblemIds||[]])),
+    codingSubmissions:Object.fromEntries(usersList.map((u:any)=>[u.username,u.codingSubmissions||{}])),
+    attempts:Object.fromEntries(usersList.map((u:any)=>[u.username,u.attempts||{}])),
+    streaks:Object.fromEntries(usersList.map((u:any)=>[u.username,u.streak||{}])),
+    about:about||initData.about,
+    resources:site.resources||[],
+    pinnedAnnouncementId:site.pinnedAnnouncementId??null,
+    officerTasks:officerPlanner.officerTasks||[],
+    officerEvents:officerPlanner.officerEvents||[],
+    googleCalendarId:officerPlanner.googleCalendarId||"",
+  };
+
   useEffect(()=>{
-    const unsub=onSnapshot(DATA_DOC,snap=>{
-      if(snap.exists()){setData({...initData,...snap.data()});}
-      else{setDoc(DATA_DOC,initData);}
-      setLoading(false);
-    },err=>{console.error("Firestore error",err);setLoading(false);});
-    return()=>unsub();
+    bootstrapClubData();
+    const mark=(k:string)=>setLoadedFlags((f:any)=>({...f,[k]:true}));
+    const onErr=(k:string)=>(err:any)=>{console.error(`Firestore error (${k})`,err);mark(k);};
+    const unsubs=[
+      onSnapshot(collection(db,"problems"),snap=>{setProblems(snap.docs.map(d=>d.data()));mark("problems");},onErr("problems")),
+      onSnapshot(collection(db,"codingQuestions"),snap=>{setCodingQuestions(snap.docs.map(d=>d.data()));mark("codingQuestions");},onErr("codingQuestions")),
+      onSnapshot(collection(db,"units"),snap=>{setUnits(snap.docs.map(d=>d.data()));mark("units");},onErr("units")),
+      onSnapshot(collection(db,"announcements"),snap=>{setAnnouncements(snap.docs.map(d=>d.data()));mark("announcements");},onErr("announcements")),
+      onSnapshot(collection(db,"events"),snap=>{setEvents(snap.docs.map(d=>d.data()));mark("events");},onErr("events")),
+      onSnapshot(collection(db,"users"),snap=>{setUsersList(snap.docs.map(d=>d.data()));mark("users");},onErr("users")),
+      onSnapshot(ABOUT_DOC,snap=>{setAboutState(snap.exists()?snap.data():initData.about);mark("about");},onErr("about")),
+      onSnapshot(SITE_DOC,snap=>{setSite(snap.exists()?snap.data():{resources:initData.resources,pinnedAnnouncementId:null});mark("site");},onErr("site")),
+      onSnapshot(PLANNER_DOC,snap=>{setOfficerPlanner(snap.exists()?snap.data():{officerTasks:[],officerEvents:[],googleCalendarId:""});mark("planner");},onErr("planner")),
+    ];
+    return()=>unsubs.forEach(u=>u());
   },[]);
 
-  const upd=(fn:any,logMeta?:any)=>setData((prev:any)=>{
-    const next=fn(prev);
-    saveData(prev,next);
+  useEffect(()=>{
+    const needed=["problems","codingQuestions","units","announcements","events","users","about","site","planner"];
+    if(needed.every(k=>loadedFlags[k]))setLoading(false);
+  },[loadedFlags]);
+
+  const upd=(fn:any,logMeta?:any)=>{
+    const next=fn(data);
+    saveData(data,next);
     if(logMeta){
       addDoc(collection(db,"auditLog"),{
         action:logMeta.action,
@@ -746,12 +1019,15 @@ export default function App(){
         createdAt:new Date().toISOString(),
       }).catch((e:any)=>console.error("Audit log failed",e));
     }
-    return next;
-  });
+  };
   const isOfficer=user&&(user.role==="officer"||user.role==="developer");
   const isDev=user&&user.role==="developer";
   const isGuest=user&&user.role==="guest";
   const myCompleted=user&&!isGuest?((data.completions||{})[user.username]||[]):[];
+
+  useEffect(()=>{
+    if(isOfficer)maybeAutoBackup(user.username);
+  },[user?.username]);
 
   const login=async()=>{
     const attemptHash=await hashPassword(loginForm.password);
@@ -1759,11 +2035,71 @@ function OfficersPage({data,upd,isDev,user}:any){
           </div>
         ))}
       </div>
+      <BackupsPanel/>
       <AuditLogPanel/>
     </div>
   );
 }
 
+
+function BackupsPanel(){
+  const [backups,setBackups]=useState<any[]>([]);
+  const [exporting,setExporting]=useState(false);
+  const [restoringId,setRestoringId]=useState<string|null>(null);
+  useEffect(()=>{
+    const q=query(collection(db,"backups"),orderBy("createdAt","desc"),limit(20));
+    const unsub=onSnapshot(q,snap=>setBackups(snap.docs.map(d=>({id:d.id,...d.data()}))),(err:any)=>console.error(err));
+    return()=>unsub();
+  },[]);
+  const doExport=async()=>{
+    setExporting(true);
+    try{
+      const payload=await fetchAllForBackup();
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=`bridgeland-cs-club-backup-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }catch(e){console.error(e);window.alert("Export failed — check the console for details.");}
+    setExporting(false);
+  };
+  const doRestore=async(b:any)=>{
+    const typed=window.prompt(`This will replace the ENTIRE live site with the backup from ${new Date(b.createdAt).toLocaleString()}. Anything added or changed since then will be LOST. This cannot be undone.\n\nType RESTORE to confirm.`);
+    if(typed!=="RESTORE")return;
+    setRestoringId(b.id);
+    try{
+      await restoreBackup(b.id);
+      window.alert("Restore complete. The site now matches that backup.");
+    }catch(e){console.error(e);window.alert("Restore failed — check the console for details.");}
+    setRestoringId(null);
+  };
+  return(
+    <div style={{marginTop:32}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
+        <h2 style={{margin:0,fontSize:18}}>Backups</h2>
+        <SecBtn onClick={doExport} style={{fontSize:12,padding:"6px 14px"}}>{exporting?"Exporting...":"⬇ Export backup (.json)"}</SecBtn>
+      </div>
+      <p style={{color:C.muted,fontSize:12,margin:"0 0 14px"}}>
+        The site automatically saves a snapshot roughly once a day (whenever an officer is signed in) —
+        each item stored as its own small document, so a snapshot can never hit Firestore's size limit either.
+        The 14 most recent snapshots are kept. Use "Export" any time for a downloadable copy on your own computer.
+      </p>
+      {backups.length===0&&<p style={{color:C.muted,fontSize:13}}>No automatic snapshots yet — one will be created the next time an officer signs in.</p>}
+      {backups.map((b:any)=>(
+        <div key={b.id} style={{...cardS,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:14}}>{new Date(b.createdAt).toLocaleString()}</div>
+            <div style={{fontSize:12,color:C.muted,marginTop:2}}>
+              {b.counts?.users??0} members · {b.counts?.problems??0} problems · {b.counts?.units??0} units · {b.counts?.announcements??0} announcements · {b.counts?.events??0} events
+            </div>
+          </div>
+          <OutBtn danger onClick={()=>doRestore(b)} style={{fontSize:12,padding:"6px 14px"}}>{restoringId===b.id?"Restoring...":"Restore this backup"}</OutBtn>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function AuditLogPanel(){
   const [logs,setLogs]=useState<any[]>([]);
