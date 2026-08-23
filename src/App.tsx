@@ -324,8 +324,24 @@ async function saveData(prev:any,next:any){
 // it only ever writes if the new users collection is genuinely empty.
 async function bootstrapClubData(){
   try{
-    const usersSnap=await getDocs(collection(db,"users"));
-    if(!usersSnap.empty)return; // already has real data — never touch it
+    // Runs at most ONCE, ever, tracked by this marker doc — NOT by "is the users
+    // collection empty", which stays true forever if a club genuinely has zero
+    // members right now (e.g. right after everyone was deleted), causing this to
+    // re-run on every single page load and silently overwrite fresh edits.
+    const marker=await getDoc(doc(db,"settings","bootstrapStatus"));
+    if(marker.exists()&&marker.data()?.done)return;
+
+    const [usersSnap,problemsSnap,cqSnap,unitSnap,annSnap,evtSnap]=await Promise.all([
+      getDocs(collection(db,"users")),getDocs(collection(db,"problems")),getDocs(collection(db,"codingQuestions")),
+      getDocs(collection(db,"units")),getDocs(collection(db,"announcements")),getDocs(collection(db,"events")),
+    ]);
+    const alreadyHasRealData=![usersSnap,problemsSnap,cqSnap,unitSnap,annSnap,evtSnap].every(s=>s.empty);
+    if(alreadyHasRealData){
+      // Someone's already been actively using/rebuilding the site — never touch it,
+      // just mark this done so we stop checking.
+      await setDoc(doc(db,"settings","bootstrapStatus"),{done:true,completedAt:new Date().toISOString(),source:"already-had-data"});
+      return;
+    }
     const legacySnap=await getDoc(LEGACY_DATA_DOC);
     const ops:Promise<any>[]=[];
     if(legacySnap.exists()&&(legacySnap.data()?.users?.length||legacySnap.data()?.problems?.length)){
@@ -360,6 +376,7 @@ async function bootstrapClubData(){
       ops.push(setDoc(PLANNER_DOC,{officerTasks:[],officerEvents:[],googleCalendarId:""},{merge:true}));
       await Promise.all(ops);
     }
+    await setDoc(doc(db,"settings","bootstrapStatus"),{done:true,completedAt:new Date().toISOString(),source:legacySnap.exists()?"migrated-legacy":"seeded-default"});
   }catch(e){console.error("Bootstrap check failed",e);}
 }
 
