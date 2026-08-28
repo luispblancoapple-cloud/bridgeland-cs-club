@@ -80,37 +80,21 @@ const LANGS=["Java","Python","C++"];
 
 const LANG_IDS:any={"Python":71,"Java":62,"C++":54};
 
-function convertInput(input:string,lang:string):string{
-  if(lang==="Python") return input;
-  return input.replace(/'([^']*)'/g,(_:string,s:string)=>`"${s}"`);
-}
-
-function buildSubmission(code:string,lang:string,input:string):string{
-  const inp=convertInput(input,lang);
-  if(lang==="Python"){
-    return `${code}\n\ntry:\n    _result = solution(${input})\n    print(_result)\nexcept Exception as e:\n    print(f"Error: {e}")`;
-  }else if(lang==="Java"){
-    if(!code.includes("class Main")&&!code.includes("class Solution")){
-      return `import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n${code}\npublic static void main(String[] args){\ntry{\nObject _r=solution(${inp});\nif(_r instanceof int[]){System.out.println(Arrays.toString((int[])_r));}\nelse if(_r instanceof long[]){System.out.println(Arrays.toString((long[])_r));}\nelse if(_r instanceof double[]){System.out.println(Arrays.toString((double[])_r));}\nelse if(_r instanceof String[]){System.out.println(Arrays.toString((String[])_r));}\nelse if(_r instanceof boolean[]){System.out.println(Arrays.toString((boolean[])_r));}\nelse{System.out.println(_r);}\n}catch(Exception e){System.out.println("Error: "+e.getMessage());}\n}\n}`;
-    }
-    return code;
-  }else if(lang==="C++"){
-    return `#include<bits/stdc++.h>\nusing namespace std;\n${code}\nint main(){\ntry{\nauto _r=solution(${inp});\ncout<<_r<<"\n";\n}catch(exception& e){cout<<"Error: "<<e.what()<<"\n";}\nreturn 0;\n}`;
-  }else{
-    return `${code}\nconsole.log(JSON.stringify(solution(${input})));`;
-  }
-}
-
+// Students write a complete, runnable program (their own main/entry point) that
+// reads input via stdin — e.g. `Scanner input = new Scanner(System.in);` in Java,
+// `input()`/`sys.stdin` in Python, `cin` in C++ — and prints the answer. Test case
+// "input" is the raw text fed to the program's stdin; "expected" is the raw text the
+// program should print. No source-code wrapping/injection needed, since the program
+// is already complete — Judge0 runs it directly with that test case's stdin.
 async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<any[]>{
   const langId=LANG_IDS[lang]||93;
   const PUBLIC="https://ce.judge0.com";
   const results=await Promise.all(testCases.map(async(tc:any)=>{
     try{
-      const src=buildSubmission(code,lang,tc.input);
       const sub=await fetch(`${PUBLIC}/submissions?base64_encoded=false&wait=true`,{
         method:"POST",
         headers:{"Content-Type":"application/json","Accept":"application/json"},
-        body:JSON.stringify({source_code:src,language_id:langId,stdin:"",cpu_time_limit:5,memory_limit:262144}),
+        body:JSON.stringify({source_code:code,language_id:langId,stdin:tc.input||"",cpu_time_limit:5,memory_limit:262144}),
       });
       if(!sub.ok)throw new Error(`Judge0 error ${sub.status}`);
       const result=await sub.json();
@@ -124,10 +108,9 @@ async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<an
         return{input:tc.input,expected:tc.expected,got:`Error: ${errMsg}`,pass:false};
       }
       const got=stdout.trim();
-      const expected=tc.expected.trim().replace(/^['"]|['"]$/g,"");
+      const expected=(tc.expected||"").trim();
       const pass=got===expected
-        ||got===tc.expected.trim()
-        ||(parseFloat(got)===parseFloat(expected)&&!isNaN(parseFloat(got)))
+        ||(parseFloat(got)===parseFloat(expected)&&!isNaN(parseFloat(got))&&!isNaN(parseFloat(expected)))
         ||got.toLowerCase()===expected.toLowerCase();
       return{input:tc.input,expected:tc.expected,got,pass};
     }catch(e:any){
@@ -216,17 +199,29 @@ const initData:any={
   ],
   codingQuestions:[
     {id:1,title:"Sum Two Numbers",difficulty:"Easy",language:"Java",
-      desc:"Write a function called `solution` that takes two numbers and returns their sum.\n\nExample: solution(2, 3) → 5",
-      starterCodes:{"Java":"static int solution(int a, int b) {\n    // your code here\n    return 0;\n}","Python":"def solution(a, b):\n    # your code here\n    return 0","C++":"auto solution(int a, int b) {\n    // your code here\n    return 0;\n}"},
-      testCases:[{input:"2,3",expected:"5"},{input:"0,0",expected:"0"},{input:"-1,1",expected:"0"},{input:"10,20",expected:"30"}]},
+      desc:"Read two integers from input (space-separated) and print their sum.\n\nExample input: 2 3\nExample output: 5",
+      starterCodes:{
+        "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n        int a = input.nextInt();\n        int b = input.nextInt();\n\n        // your code here\n\n    }\n}",
+        "Python":"a, b = map(int, input().split())\n\n# your code here\n",
+        "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n\n    // your code here\n\n    return 0;\n}",
+      },
+      testCases:[{input:"2 3",expected:"5"},{input:"0 0",expected:"0"},{input:"-1 1",expected:"0"},{input:"10 20",expected:"30"}]},
     {id:2,title:"Reverse a String",difficulty:"Easy",language:"Java",
-      desc:"Write a function called `solution` that takes a string and returns it reversed.\n\nExample: solution('hello') → 'olleh'",
-      starterCodes:{"Java":"static String solution(String s) {\n    // your code here\n    return \"\";\n}","Python":"def solution(s):\n    # your code here\n    return \"\"","C++":"string solution(string s) {\n    // your code here\n    return s;\n}"},
-      testCases:[{input:'"hello"',expected:'"olleh"'},{input:'"world"',expected:'"dlrow"'},{input:'"a"',expected:'"a"'}]},
+      desc:"Read a single line of text and print it reversed.\n\nExample input: hello\nExample output: olleh",
+      starterCodes:{
+        "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n        String s = input.nextLine();\n\n        // your code here\n\n    }\n}",
+        "Python":"s = input()\n\n# your code here\n",
+        "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    string s;\n    getline(cin, s);\n\n    // your code here\n\n    return 0;\n}",
+      },
+      testCases:[{input:"hello",expected:"olleh"},{input:"world",expected:"dlrow"},{input:"a",expected:"a"}]},
     {id:3,title:"Is Palindrome",difficulty:"Medium",language:"Java",
-      desc:"Write a function called `solution` that returns true if a string is a palindrome, false otherwise.\n\nExample: solution('racecar') → true",
-      starterCodes:{"Java":"static boolean solution(String s) {\n    // your code here\n    return false;\n}","Python":"def solution(s):\n    # your code here\n    return False","C++":"bool solution(string s) {\n    // your code here\n    return false;\n}"},
-      testCases:[{input:'"racecar"',expected:"true"},{input:'"hello"',expected:"false"},{input:'"level"',expected:"true"},{input:'"a"',expected:"true"}]},
+      desc:"Read a single line of text and print `true` if it's a palindrome, `false` otherwise.\n\nExample input: racecar\nExample output: true",
+      starterCodes:{
+        "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n        String s = input.nextLine();\n\n        // your code here\n\n    }\n}",
+        "Python":"s = input()\n\n# your code here\n",
+        "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    string s;\n    getline(cin, s);\n\n    // your code here\n\n    return 0;\n}",
+      },
+      testCases:[{input:"racecar",expected:"true"},{input:"hello",expected:"false"},{input:"level",expected:"true"},{input:"a",expected:"true"}]},
   ],
   units:[{id:1,title:"Intro to CS Concepts",desc:"Foundational concepts every CS student should know.",problemIds:[1,2,3]}],
   completions:{},codingSubmissions:{},attempts:{},streaks:{},
@@ -1441,11 +1436,13 @@ export default function App(){
                 <div>
                   <span style={{fontWeight:600}}>{u.name||u.username}</span>
                   <span style={{fontSize:12,color:C.muted,marginLeft:8}}>@{u.username}</span>
-                  <Tag c={u.role==="officer"?C.orange:C.muted}>{u.role}</Tag>
+                  <Tag c={u.role==="developer"?C.purple:u.role==="officer"?C.orange:C.muted}>{u.role}</Tag>
                 </div>
                 <div style={{display:"flex",gap:8}}>
                   {u.role==="member"&&<SecBtn onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Make officer</SecBtn>}
                   {u.role==="officer"&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"member"}:x)}))}>Demote</Btn>}
+                  {u.role==="officer"&&<SecBtn onClick={()=>{if(window.confirm(`Make ${u.name||u.username} a developer? Developers can manage members (including other developers) and have full admin access.`))upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"developer"}:x)}));}}>Make developer</SecBtn>}
+                  {u.role==="developer"&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Demote to officer</Btn>}
                   <OutBtn danger onClick={()=>{if(window.confirm(`Delete ${u.name||u.username}? This cannot be undone.`))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>
                 </div>
               </div>
@@ -1613,9 +1610,9 @@ function CodeEditor({code,onChange,lang}:any){
 
 function CodingView({cq,user,data,upd,onBack}:any){
   const STARTER:any={
-    "Python":"def solution():\n    # your code here\n    pass",
-    "Java":"static String solution(String s) {\n    // your code here\n    return \"\";\n}",
-    "C++":"auto solution(auto arg) {\n    // your code here\n    return arg;\n}",
+    "Python":"# Read input with input() or sys.stdin, then print your answer\nimport sys\ndata = sys.stdin.read().split()\n\n# your code here\n",
+    "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n\n        // your code here\n\n    }\n}",
+    "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // your code here\n\n    return 0;\n}",
   };
   const initLang=(cq.language&&LANGS.includes(cq.language))?cq.language:"Java";
   const [lang,setLang]=useState(initLang);
@@ -1667,13 +1664,8 @@ function CodingView({cq,user,data,upd,onBack}:any){
               <div style={{fontSize:14,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{cq.desc}</div>
             </div>
             <div style={cardS}>
-              <h3 style={{margin:"0 0 10px",fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Test Cases ({cq.testCases?.length||0})</h3>
-              {(cq.testCases||[]).map((tc:any,i:number)=>(
-                <div key={i} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:C.bgInput,fontSize:13}}>
-                  <div style={{color:C.muted,marginBottom:2}}>Input: <code style={{color:C.text}}>{tc.input}</code></div>
-                  <div style={{color:C.muted}}>Expected: <code style={{color:C.green}}>{tc.expected}</code></div>
-                </div>
-              ))}
+              <h3 style={{margin:"0 0 8px",fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Input</h3>
+              <div style={{fontSize:13,color:C.muted}}>Your program will be run against {cq.testCases?.length||0} hidden test case{(cq.testCases?.length||0)!==1?"s":""}. Read input from stdin (e.g. <code style={{color:C.text}}>Scanner input = new Scanner(System.in);</code> in Java) and print your answer.</div>
             </div>
           </div>
           <div>
@@ -1714,13 +1706,9 @@ function CodingView({cq,user,data,upd,onBack}:any){
                   </div>
                 </div>
                 {results.map((r:any,i:number)=>(
-                  <div key={i} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:r.pass?`${C.green}15`:`${C.red}15`,border:`1px solid ${r.pass?C.green:C.red}33`,fontSize:12}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                      <span style={{color:r.pass?C.green:C.red,fontWeight:700}}>{r.pass?"✓":"✗"}</span>
-                      <span style={{color:C.muted}}>Input: <code style={{color:C.text}}>{r.input}</code></span>
-                    </div>
-                    <div style={{color:C.muted}}>Expected: <code style={{color:C.green}}>{r.expected}</code></div>
-                    {!r.pass&&<div style={{color:C.muted,marginTop:2}}>Got: <code style={{color:C.red}}>{r.got}</code></div>}
+                  <div key={i} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:r.pass?`${C.green}15`:`${C.red}15`,border:`1px solid ${r.pass?C.green:C.red}33`,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{color:r.pass?C.green:C.red,fontWeight:700}}>{r.pass?"✓":"✗"}</span>
+                    <span style={{color:C.muted}}>Test {i+1}{r.pass?" passed":r.got?.startsWith("Compile error")?" — compile error":r.got?.startsWith("Error")?" — runtime error":r.got==="Time limit exceeded"?" — time limit exceeded":" failed"}</span>
                   </div>
                 ))}
               </div>
@@ -2375,10 +2363,11 @@ function LeaderboardPage({data,user}:any){
   const [lbTab,setLbTab]=useState("solved");
   const medal=(i:number)=>i===0?C.orange:i===1?C.orange:C.muted;
   const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.orange}28`:C.border;
-  const solvedRows=[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
-  const accuracyRows=[...(data.users||[])].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
-  const streakRows=[...(data.users||[])].map((u:any)=>{const s=((data.streaks||{})[u.username])||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
-  const codingRows=[...(data.users||[])].map((u:any)=>{
+  const lbUsers=(data.users||[]).filter((u:any)=>u.role==="member"); // officers/developers don't appear on leaderboards
+  const solvedRows=[...lbUsers].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
+  const accuracyRows=[...lbUsers].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
+  const streakRows=[...lbUsers].map((u:any)=>{const s=((data.streaks||{})[u.username])||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
+  const codingRows=[...lbUsers].map((u:any)=>{
     const subs=((data.codingSubmissions||{})[u.username])||{};
     const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
     const total=Object.values(subs).length;
@@ -2582,14 +2571,17 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
             <label style={{...lbl,margin:0}}>Test cases</label>
             <button onClick={addTC} style={{background:"transparent",border:`1px dashed ${C.border}`,color:C.muted,padding:"3px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>+ Add test case</button>
           </div>
+          <div style={{background:`${C.orange}15`,border:`1px solid ${C.orange}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.orange,marginBottom:8}}>
+            Students write a full program that reads input from stdin (e.g. Scanner in Java) and prints its answer. "Input" below is exactly what's fed to the program; "Expected output" is exactly what it should print. Test cases are hidden from students.
+          </div>
           <div style={{background:C.bgInput,borderRadius:8,padding:10,marginBottom:16}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:6,marginBottom:6}}>
-              <span style={{fontSize:11,color:C.muted}}>Input (comma-sep args)</span>
-              <span style={{fontSize:11,color:C.muted}}>Expected output</span><span/>
+              <span style={{fontSize:11,color:C.muted}}>Input (stdin)</span>
+              <span style={{fontSize:11,color:C.muted}}>Expected output (stdout)</span><span/>
             </div>
             {cqForm.testCases.map((tc:any,i:number)=>(
               <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:6,marginBottom:6}}>
-                <input style={{...inp,fontSize:12,fontFamily:"monospace"}} value={tc.input} onChange={(e:any)=>setTC(i,"input",e.target.value)} placeholder="e.g. 2,3"/>
+                <input style={{...inp,fontSize:12,fontFamily:"monospace"}} value={tc.input} onChange={(e:any)=>setTC(i,"input",e.target.value)} placeholder="e.g. 2 3"/>
                 <input style={{...inp,fontSize:12,fontFamily:"monospace"}} value={tc.expected} onChange={(e:any)=>setTC(i,"expected",e.target.value)} placeholder="e.g. 5"/>
                 <button onClick={()=>removeTC(i)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>
               </div>
