@@ -1191,14 +1191,14 @@ export default function App(){
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
-                {[...(data.users||[])].map((u:any)=>({name:u.name||u.username,username:u.username,count:((data.completions||{})[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
+                {[...(data.users||[])].filter((u:any)=>u.role==="member").map((u:any)=>({name:u.name||u.username,username:u.username,count:((data.completions||{})[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
                     <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.orange}28`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.orange:C.muted,flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
                     <div style={{fontWeight:700,color:C.orange}}>{u.count}</div><div style={{fontSize:12,color:C.muted}}>solved</div>
                   </div>
                 ))}
-                {data.users.length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No solvers yet.</p>}
+                {(data.users||[]).filter((u:any)=>u.role==="member").length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No solvers yet.</p>}
               </div></>
             )}
             <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Latest announcements</h3>
@@ -2366,14 +2366,13 @@ function LeaderboardPage({data,user}:any){
   const lbUsers=(data.users||[]).filter((u:any)=>u.role==="member"); // officers/developers don't appear on leaderboards
   const solvedRows=[...lbUsers].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
   const accuracyRows=[...lbUsers].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
-  const streakRows=[...lbUsers].map((u:any)=>{const s=((data.streaks||{})[u.username])||{current:0,best:0};return{name:u.name||u.username,username:u.username,value:s.current,sub:`Best: ${s.best}`,label:"day streak"};}).sort((a:any,b:any)=>b.value-a.value);
   const codingRows=[...lbUsers].map((u:any)=>{
     const subs=((data.codingSubmissions||{})[u.username])||{};
     const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
     const total=Object.values(subs).length;
     return{name:u.name||u.username,username:u.username,value:perfect,sub:total>0?`${total} attempted`:"",label:"perfect"};
   }).sort((a:any,b:any)=>b.value-a.value);
-  const rows=lbTab==="solved"?solvedRows:lbTab==="accuracy"?accuracyRows:lbTab==="streak"?streakRows:codingRows;
+  const rows=lbTab==="solved"?solvedRows:lbTab==="accuracy"?accuracyRows:codingRows;
   const tabBtn=(t:string)=>({background:lbTab===t?`${C.orange}28`:"transparent",color:lbTab===t?C.orange:C.muted,border:`1px solid ${lbTab===t?C.orange:C.border}`,padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:lbTab===t?700:400});
   return(
     <div>
@@ -2382,7 +2381,6 @@ function LeaderboardPage({data,user}:any){
         <button style={tabBtn("solved")} onClick={()=>setLbTab("solved")}>MC Solved</button>
         <button style={tabBtn("coding")} onClick={()=>setLbTab("coding")}>Coding Solved</button>
         <button style={tabBtn("accuracy")} onClick={()=>setLbTab("accuracy")}>Accuracy</button>
-        <button style={tabBtn("streak")} onClick={()=>setLbTab("streak")}>Daily Streak</button>
       </div>
       {rows.map((u:any,i:number)=>(
         <div key={u.username} style={{...cardS,display:"flex",alignItems:"center",gap:14,marginBottom:8}}>
@@ -2571,19 +2569,16 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
             <label style={{...lbl,margin:0}}>Test cases</label>
             <button onClick={addTC} style={{background:"transparent",border:`1px dashed ${C.border}`,color:C.muted,padding:"3px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>+ Add test case</button>
           </div>
-          <div style={{background:`${C.orange}15`,border:`1px solid ${C.orange}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.orange,marginBottom:8}}>
-            Students write a full program that reads input from stdin (e.g. Scanner in Java) and prints its answer. "Input" below is exactly what's fed to the program; "Expected output" is exactly what it should print. Test cases are hidden from students.
-          </div>
           <div style={{background:C.bgInput,borderRadius:8,padding:10,marginBottom:16}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:6,marginBottom:6}}>
-              <span style={{fontSize:11,color:C.muted}}>Input (stdin)</span>
-              <span style={{fontSize:11,color:C.muted}}>Expected output (stdout)</span><span/>
+              <span style={{fontSize:11,color:C.muted}}>Input (stdin — multiple lines ok)</span>
+              <span style={{fontSize:11,color:C.muted}}>Expected output (stdout — multiple lines ok)</span><span/>
             </div>
             {cqForm.testCases.map((tc:any,i:number)=>(
               <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:6,marginBottom:6}}>
-                <input style={{...inp,fontSize:12,fontFamily:"monospace"}} value={tc.input} onChange={(e:any)=>setTC(i,"input",e.target.value)} placeholder="e.g. 2 3"/>
-                <input style={{...inp,fontSize:12,fontFamily:"monospace"}} value={tc.expected} onChange={(e:any)=>setTC(i,"expected",e.target.value)} placeholder="e.g. 5"/>
-                <button onClick={()=>removeTC(i)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>
+                <textarea style={{...inp,fontSize:12,fontFamily:"monospace",height:60,resize:"vertical"}} value={tc.input} onChange={(e:any)=>setTC(i,"input",e.target.value)} placeholder={"e.g. 2 3\n(or multiple lines)"}/>
+                <textarea style={{...inp,fontSize:12,fontFamily:"monospace",height:60,resize:"vertical"}} value={tc.expected} onChange={(e:any)=>setTC(i,"expected",e.target.value)} placeholder={"e.g. 5\n(or multiple lines)"}/>
+                <button onClick={()=>removeTC(i)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:"0 4px",alignSelf:"start"}}>×</button>
               </div>
             ))}
           </div>
