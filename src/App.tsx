@@ -224,6 +224,7 @@ const initData:any={
       testCases:[{input:"racecar",expected:"true"},{input:"hello",expected:"false"},{input:"level",expected:"true"},{input:"a",expected:"true"}]},
   ],
   units:[{id:1,title:"Intro to CS Concepts",desc:"Foundational concepts every CS student should know.",problemIds:[1,2,3]}],
+  codingUnits:[],
   completions:{},codingSubmissions:{},attempts:{},streaks:{},
   officerTasks:[],officerEvents:[],googleCalendarId:"",
   about:{
@@ -246,6 +247,7 @@ const ARRAY_COLLECTIONS:[string,string,string][]=[
   ["problems","problems","id"],
   ["codingQuestions","codingQuestions","id"],
   ["units","units","id"],
+  ["codingUnits","codingUnits","id"],
   ["announcements","announcements","id"],
   ["events","events","id"],
   ["users","users","username"],
@@ -344,6 +346,7 @@ async function bootstrapClubData(){
       (legacy.problems||[]).forEach((p:any)=>ops.push(setDoc(doc(db,"problems",String(p.id)),p,{merge:true})));
       (legacy.codingQuestions||[]).forEach((q:any)=>ops.push(setDoc(doc(db,"codingQuestions",String(q.id)),q,{merge:true})));
       (legacy.units||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"units",String(u.id)),u,{merge:true})));
+      (legacy.codingUnits||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"codingUnits",String(u.id)),u,{merge:true})));
       (legacy.announcements||[]).forEach((a:any)=>ops.push(setDoc(doc(db,"announcements",String(a.id)),a,{merge:true})));
       (legacy.events||[]).forEach((e:any)=>ops.push(setDoc(doc(db,"events",String(e.id)),e,{merge:true})));
       (legacy.users||[]).filter((u:any)=>u.username!==DEV_ACCOUNT.username).forEach((u:any)=>{
@@ -364,6 +367,7 @@ async function bootstrapClubData(){
       (initData.problems||[]).forEach((p:any)=>ops.push(setDoc(doc(db,"problems",String(p.id)),p,{merge:true})));
       (initData.codingQuestions||[]).forEach((q:any)=>ops.push(setDoc(doc(db,"codingQuestions",String(q.id)),q,{merge:true})));
       (initData.units||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"units",String(u.id)),u,{merge:true})));
+      (initData.codingUnits||[]).forEach((u:any)=>ops.push(setDoc(doc(db,"codingUnits",String(u.id)),u,{merge:true})));
       (initData.announcements||[]).forEach((a:any)=>ops.push(setDoc(doc(db,"announcements",String(a.id)),a,{merge:true})));
       (initData.events||[]).forEach((e:any)=>ops.push(setDoc(doc(db,"events",String(e.id)),e,{merge:true})));
       ops.push(setDoc(ABOUT_DOC,initData.about,{merge:true}));
@@ -383,16 +387,16 @@ async function bootstrapClubData(){
 // A snapshot is NOT one document (that's the bug we just fixed) — it mirrors the same
 // per-item structure as the live data, under backups/{backupId}/{collection}/{itemId},
 // so a snapshot can never hit the 1MB limit either, no matter how big the club gets.
-const BACKUP_COLLECTIONS=["problems","codingQuestions","units","announcements","events"];
+const BACKUP_COLLECTIONS=["problems","codingQuestions","units","codingUnits","announcements","events"];
 async function fetchAllForBackup(){
-  const [probSnap,cqSnap,unitSnap,annSnap,evtSnap,userSnap,aboutSnap,siteSnap,plannerSnap]=await Promise.all([
-    getDocs(collection(db,"problems")),getDocs(collection(db,"codingQuestions")),getDocs(collection(db,"units")),
+  const [probSnap,cqSnap,unitSnap,cuSnap,annSnap,evtSnap,userSnap,aboutSnap,siteSnap,plannerSnap]=await Promise.all([
+    getDocs(collection(db,"problems")),getDocs(collection(db,"codingQuestions")),getDocs(collection(db,"units")),getDocs(collection(db,"codingUnits")),
     getDocs(collection(db,"announcements")),getDocs(collection(db,"events")),getDocs(collection(db,"users")),
     getDoc(ABOUT_DOC),getDoc(SITE_DOC),getDoc(PLANNER_DOC),
   ]);
   return{
     exportedAt:new Date().toISOString(),
-    problems:probSnap.docs.map(d=>d.data()),codingQuestions:cqSnap.docs.map(d=>d.data()),units:unitSnap.docs.map(d=>d.data()),
+    problems:probSnap.docs.map(d=>d.data()),codingQuestions:cqSnap.docs.map(d=>d.data()),units:unitSnap.docs.map(d=>d.data()),codingUnits:cuSnap.docs.map(d=>d.data()),
     announcements:annSnap.docs.map(d=>d.data()),events:evtSnap.docs.map(d=>d.data()),users:userSnap.docs.map(d=>d.data()),
     about:aboutSnap.exists()?aboutSnap.data():null,site:siteSnap.exists()?siteSnap.data():null,officerPlanner:plannerSnap.exists()?plannerSnap.data():null,
   };
@@ -402,11 +406,12 @@ async function createBackupSnapshot(triggeredBy:string){
   const backupId=payload.exportedAt.replace(/[:.]/g,"-");
   const ops:Promise<any>[]=[setDoc(doc(db,"backups",backupId),{
     createdAt:payload.exportedAt,triggeredBy,
-    counts:{problems:payload.problems.length,codingQuestions:payload.codingQuestions.length,units:payload.units.length,announcements:payload.announcements.length,events:payload.events.length,users:payload.users.length},
+    counts:{problems:payload.problems.length,codingQuestions:payload.codingQuestions.length,units:payload.units.length,codingUnits:payload.codingUnits.length,announcements:payload.announcements.length,events:payload.events.length,users:payload.users.length},
   })];
   payload.problems.forEach((p:any)=>ops.push(setDoc(doc(db,"backups",backupId,"problems",String(p.id)),p)));
   payload.codingQuestions.forEach((q:any)=>ops.push(setDoc(doc(db,"backups",backupId,"codingQuestions",String(q.id)),q)));
   payload.units.forEach((u:any)=>ops.push(setDoc(doc(db,"backups",backupId,"units",String(u.id)),u)));
+  payload.codingUnits.forEach((u:any)=>ops.push(setDoc(doc(db,"backups",backupId,"codingUnits",String(u.id)),u)));
   payload.announcements.forEach((a:any)=>ops.push(setDoc(doc(db,"backups",backupId,"announcements",String(a.id)),a)));
   payload.events.forEach((e:any)=>ops.push(setDoc(doc(db,"backups",backupId,"events",String(e.id)),e)));
   payload.users.forEach((u:any)=>ops.push(setDoc(doc(db,"backups",backupId,"users",u.username),u)));
@@ -961,6 +966,7 @@ export default function App(){
   const [problems,setProblems]=useState<any[]>([]);
   const [codingQuestions,setCodingQuestions]=useState<any[]>([]);
   const [units,setUnits]=useState<any[]>([]);
+  const [codingUnits,setCodingUnits]=useState<any[]>([]);
   const [announcements,setAnnouncements]=useState<any[]>([]);
   const [events,setEvents]=useState<any[]>([]);
   const [usersList,setUsersList]=useState<any[]>([]);
@@ -979,12 +985,13 @@ export default function App(){
   const [modal,setModal]=useState<any>(null);
   const [activeProblem,setActiveProblem]=useState<any>(null);
   const [activeUnit,setActiveUnit]=useState<any>(null);
+  const [activeCodingUnit,setActiveCodingUnit]=useState<any>(null);
   const [activeCoding,setActiveCoding]=useState<any>(null);
   const [problemSearch,setProblemSearch]=useState("");
   const [dismissedAnnId,setDismissedAnnId]=useState<any>(null);
 
   const data:any={
-    problems,codingQuestions,units,announcements,events,users:usersList,
+    problems,codingQuestions,units,codingUnits,announcements,events,users:usersList,
     completions:Object.fromEntries(usersList.map((u:any)=>[u.username,u.completedProblemIds||[]])),
     codingSubmissions:Object.fromEntries(usersList.map((u:any)=>[u.username,u.codingSubmissions||{}])),
     attempts:Object.fromEntries(usersList.map((u:any)=>[u.username,u.attempts||{}])),
@@ -1005,6 +1012,7 @@ export default function App(){
       onSnapshot(collection(db,"problems"),snap=>{setProblems(snap.docs.map(d=>d.data()));mark("problems");},onErr("problems")),
       onSnapshot(collection(db,"codingQuestions"),snap=>{setCodingQuestions(snap.docs.map(d=>d.data()));mark("codingQuestions");},onErr("codingQuestions")),
       onSnapshot(collection(db,"units"),snap=>{setUnits(snap.docs.map(d=>d.data()));mark("units");},onErr("units")),
+      onSnapshot(collection(db,"codingUnits"),snap=>{setCodingUnits(snap.docs.map(d=>d.data()));mark("codingUnits");},onErr("codingUnits")),
       onSnapshot(collection(db,"announcements"),snap=>{setAnnouncements(snap.docs.map(d=>d.data()));mark("announcements");},onErr("announcements")),
       onSnapshot(collection(db,"events"),snap=>{setEvents(snap.docs.map(d=>d.data()));mark("events");},onErr("events")),
       onSnapshot(collection(db,"users"),snap=>{setUsersList(snap.docs.map(d=>d.data()));mark("users");},onErr("users")),
@@ -1016,7 +1024,7 @@ export default function App(){
   },[]);
 
   useEffect(()=>{
-    const needed=["problems","codingQuestions","units","announcements","events","users","about","site","planner"];
+    const needed=["problems","codingQuestions","units","codingUnits","announcements","events","users","about","site","planner"];
     if(needed.every(k=>loadedFlags[k]))setLoading(false);
   },[loadedFlags]);
 
@@ -1128,6 +1136,11 @@ export default function App(){
     const cq=(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(activeCoding));
     if(!cq){ return <div style={{padding:'2rem',color:C.muted}}>Question not found. <button onClick={()=>setActiveCoding(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
     return <CodingView cq={cq} user={user} data={data} upd={upd} onBack={()=>setActiveCoding(null)}/>;
+  }
+  if(activeCodingUnit!==null){
+    const cu=(data.codingUnits||[]).find((u:any)=>String(u.id)===String(activeCodingUnit));
+    if(!cu){ return <div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveCodingUnit(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
+    return <CodingUnitView unit={cu} data={data} user={user} onBack={()=>setActiveCodingUnit(null)} onQuestion={(id:any)=>setActiveCoding(id)}/>;
   }
   if(activeProblem!==null){
     const prob=data.problems.find((p:any)=>String(p.id)===String(activeProblem.id));
@@ -1367,9 +1380,12 @@ export default function App(){
 
         {page==="coding"&&(
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
               <h2 style={{margin:0}}>Coding Questions</h2>
-              {isOfficer&&<Btn onClick={()=>setModal("codingQ")}>+ New question</Btn>}
+              {isOfficer&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <SecBtn onClick={()=>setModal("codingQ")}>+ New question</SecBtn>
+                <Btn onClick={()=>setModal("codingUnit")}>+ New unit</Btn>
+              </div>}
             </div>
             {isGuest?(
               <div style={{...cardS,borderLeft:`3px solid ${C.guest}`,textAlign:"center",padding:"2rem"}}>
@@ -1382,6 +1398,37 @@ export default function App(){
                 <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
                   💡 Select a language and write your solution.
                 </div>
+                {(data.codingUnits||[]).length>0&&<>
+                  <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Units</h3>
+                  {(data.codingUnits||[]).map((cu:any)=>{
+                    const qs=(cu.codingQuestionIds||[]).map((id:any)=>(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(id))).filter(Boolean);
+                    const mySubs=(data.codingSubmissions||{})?.[user.username]||{};
+                    const solved=qs.filter((q:any)=>mySubs[q.id]?.score===100).length;
+                    return(
+                      <div key={cu.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveCodingUnit(cu.id)}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{cu.title}</div>
+                            {cu.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{cu.desc}</div>}
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{qs.map((q:any)=><Tag key={q.id} c={diffColor[q.difficulty]}>{q.title}</Tag>)}</div>
+                          </div>
+                          <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
+                            <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{solved}/{qs.length}</div>
+                            <div style={{fontSize:11,color:C.muted}}>solved</div>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
+                          <Btn onClick={(e:any)=>{e.stopPropagation();setActiveCodingUnit(cu.id);}}>Open unit →</Btn>
+                          {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
+                            <SecBtn onClick={()=>setModal({type:"editCodingUnit",codingUnit:cu})}>Edit questions</SecBtn>
+                            <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,codingUnits:(d.codingUnits||[]).filter((x:any)=>x.id!==cu.id)}),{action:`Removed coding unit "${cu.title}"`});}}>Remove</OutBtn>
+                          </div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>All coding questions</h3>
+                </>}
                 {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted}}>No coding questions yet.</p>}
                 {(data.codingQuestions||[]).map((cq:any)=>{
                   const sub=(data.codingSubmissions||{})?.[user.username]?.[cq.id];
@@ -1406,7 +1453,7 @@ export default function App(){
                         <Btn onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
-                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id)}));}}>Remove</OutBtn>
+                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id),codingUnits:(d.codingUnits||[]).map((u:any)=>({...u,codingQuestionIds:(u.codingQuestionIds||[]).filter((id:any)=>id!==cq.id)}))}),{action:`Deleted coding question "${cq.title}"`});}}>Remove</OutBtn>
                         </div>}
                       </div>
                     </div>
@@ -2280,6 +2327,40 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
   );
 }
 
+function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
+  const qs=(unit.codingQuestionIds||[]).map((id:any)=>(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(id))).filter(Boolean);
+  const mySubs=user?((data.codingSubmissions||{})[user.username]||{}):{};
+  const solved=qs.filter((q:any)=>mySubs[q.id]?.score===100).length;
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
+      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+      <div style={{maxWidth:700,margin:"0 auto",padding:"2rem 1rem"}}>
+        <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding Questions</OutBtn>
+        <div style={{background:`linear-gradient(135deg,${C.navy}99,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
+          <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
+          {unit.desc&&<p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>{unit.desc}</p>}
+          <div style={{fontSize:13,color:C.muted}}>{qs.length} question{qs.length!==1?"s":""} · {solved} solved perfectly</div>
+        </div>
+        {qs.length===0&&<p style={{color:C.muted}}>No questions in this unit.</p>}
+        {qs.map((q:any,i:number)=>{
+          const pct=mySubs[q.id]?.score??null;
+          return(
+            <div key={q.id} style={{...cardS,cursor:"pointer",display:"flex",alignItems:"center",gap:14}} onClick={()=>onQuestion(q.id)}>
+              <div style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${pct===100?C.green:C.border}`,background:pct===100?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:pct===100?"#fff":C.muted,flexShrink:0}}>{pct===100?"✓":i+1}</div>
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontWeight:600}}>{q.title}</span>
+                <Tag c={diffColor[q.difficulty]||C.muted}>{q.difficulty}</Tag>
+                {q.language&&<Tag c={C.purple}>{q.language}</Tag>}
+              </div>
+              {pct!==null&&<div style={{fontWeight:700,fontSize:14,color:pct===100?C.green:pct>0?C.orange:C.red}}>{pct}%</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
   const [selected,setSelected]=useState<any>(null);
   const [submitted,setSubmitted]=useState(false);
@@ -2396,18 +2477,22 @@ function LeaderboardPage({data,user}:any){
 
 function ModalBox({modal,setModal,data,upd,isDev}:any){
   const isEditUnit=modal&&modal.type==="editUnit";
+  const isEditCodingUnit=modal&&modal.type==="editCodingUnit";
   const isEditCodingQ=modal&&modal.type==="editCodingQ";
   const isEditProb=modal&&modal.type==="editProb";
   const editUnit=isEditUnit?modal.unit:null;
+  const editCodingUnit=isEditCodingUnit?modal.codingUnit:null;
   const editCQ=isEditCodingQ?modal.cq:null;
   const editProb=isEditProb?modal.prob:null;
   const probModalOpen=modal==="prob"||isEditProb;
   const [selProbs,setSelProbs]=useState(editUnit?[...editUnit.problemIds]:[]);
-  const [f,setF]=useState<any>(editProb?{difficulty:editProb.difficulty,choices:[...editProb.choices],answer:editProb.answer,image:editProb.image||"",selectedProblemIds:[],title:editProb.title,body:"",date:"",time:"2:40 PM",location:"",desc:editProb.desc,url:""}:{difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
+  const [selCodingQs,setSelCodingQs]=useState(editCodingUnit?[...editCodingUnit.codingQuestionIds]:[]);
+  const [f,setF]=useState<any>(editProb?{difficulty:editProb.difficulty,choices:[...editProb.choices],answer:editProb.answer,image:editProb.image||"",selectedProblemIds:[],selectedCodingQIds:[],title:editProb.title,body:"",date:"",time:"2:40 PM",location:"",desc:editProb.desc,url:""}:{difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],selectedCodingQIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
   const [cqForm,setCqForm]=useState<any>(editCQ?{...editCQ,testCases:[...(editCQ.testCases||[])],starterCodes:editCQ.starterCodes||{}}:{title:"",difficulty:"Easy",language:"Java",desc:"",starterCodes:{},testCases:[{input:"",expected:""}]});
   const set=(patch:any)=>setF((prev:any)=>({...prev,...patch}));
   const setChoice=(i:number,v:string)=>setF((p:any)=>{const c=[...p.choices];c[i]=v;return{...p,choices:c};});
   const toggleProb=(id:any)=>setF((p:any)=>({...p,selectedProblemIds:p.selectedProblemIds.includes(id)?p.selectedProblemIds.filter((x:any)=>x!==id):[...p.selectedProblemIds,id]}));
+  const toggleCodingQ=(id:any)=>setF((p:any)=>({...p,selectedCodingQIds:p.selectedCodingQIds.includes(id)?p.selectedCodingQIds.filter((x:any)=>x!==id):[...p.selectedCodingQIds,id]}));
   const close=()=>setModal(null);
 
   if(isEditUnit){
@@ -2427,6 +2512,29 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
             );})}
           </div>
           <p style={{fontSize:12,color:C.orange,margin:"0 0 14px"}}>{selProbs.length} problem{selProbs.length!==1?"s":""} selected</p>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={saveEdit}>Save changes</Btn></div>
+        </div>
+      </div>
+    );
+  }
+
+  if(isEditCodingUnit){
+    const toggleSel=(id:any)=>setSelCodingQs((s:any)=>s.includes(id)?s.filter((x:any)=>x!==id):[...s,id]);
+    const saveEdit=()=>{upd((d:any)=>({...d,codingUnits:d.codingUnits.map((u:any)=>u.id===editCodingUnit.id?{...u,codingQuestionIds:selCodingQs}:u)}));close();};
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+          <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit questions</h3>
+          <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editCodingUnit.title}</p>
+          <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
+            {(data.codingQuestions||[]).map((q:any)=>{const sel=selCodingQs.includes(q.id);return(
+              <div key={q.id} onClick={()=>toggleSel(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+                <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
+                <span style={{flex:1,fontSize:14}}>{q.title}</span><Tag c={diffColor[q.difficulty]}>{q.difficulty}</Tag>
+              </div>
+            );})}
+          </div>
+          <p style={{fontSize:12,color:C.orange,margin:"0 0 14px"}}>{selCodingQs.length} question{selCodingQs.length!==1?"s":""} selected</p>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={saveEdit}>Save changes</Btn></div>
         </div>
       </div>
@@ -2620,15 +2728,20 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       if(!f.selectedProblemIds.length){setFormErr("Select at least one problem.");return;}
       upd((d:any)=>({...d,units:[...(d.units||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",problemIds:f.selectedProblemIds}]}),{action:`Created unit "${f.title.trim()}"`});
       notify("all","New practice unit",f.title.trim());
+    } else if(modal==="codingUnit"){
+      if(!f.title.trim()){setFormErr("Unit title is required.");return;}
+      if(!f.selectedCodingQIds.length){setFormErr("Select at least one coding question.");return;}
+      upd((d:any)=>({...d,codingUnits:[...(d.codingUnits||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",codingQuestionIds:f.selectedCodingQIds}]}),{action:`Created coding unit "${f.title.trim()}"`});
+      notify("all","New coding unit",f.title.trim());
     }
     close();
   };
 
-  const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit"};
+  const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit",codingUnit:"Create Coding Unit"};
   const modalKey=typeof modal==="string"?modal:modal?.type;
   const modalTitle=isEditProb?"Edit Problem":(titles[modalKey]||"Add");
   const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
+  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","codingUnit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
 
   return(
     <div style={overlay} onClick={close}>
@@ -2691,9 +2804,27 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           {f.selectedProblemIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length>1?"s":""} selected</p>}
         </>}
 
+        {modal==="codingUnit"&&<>
+          <label style={lbl}>Unit title <span style={{color:C.red}}>*</span></label>
+          <input style={{...inp,marginBottom:10,borderColor:(!f.title.trim()&&formErr)?C.red:C.border}} value={f.title} placeholder="e.g. Loops & Iteration" onChange={(e:any)=>set({title:e.target.value})}/>
+          <label style={lbl}>Description (optional)</label>
+          <input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
+          <label style={lbl}>Select coding questions <span style={{color:C.red}}>*</span></label>
+          <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedCodingQIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
+            {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No coding questions yet. Create some first.</p>}
+            {(data.codingQuestions||[]).map((q:any)=>{const sel=f.selectedCodingQIds.includes(q.id);return(
+              <div key={q.id} onClick={()=>toggleCodingQ(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+                <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
+                <span style={{flex:1,fontSize:14}}>{q.title}</span><Tag c={diffColor[q.difficulty]||C.muted}>{q.difficulty}</Tag>
+              </div>
+            );})}
+          </div>
+          {f.selectedCodingQIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedCodingQIds.length} question{f.selectedCodingQIds.length>1?"s":""} selected</p>}
+        </>}
+
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
           <OutBtn onClick={close}>Cancel</OutBtn>
-          <Btn onClick={submit}>{modal==="unit"?"Create unit":isEditProb?"Save changes":"Add"}</Btn>
+          <Btn onClick={submit}>{modal==="unit"?"Create unit":modal==="codingUnit"?"Create unit":isEditProb?"Save changes":"Add"}</Btn>
         </div>
       </div>
     </div>
