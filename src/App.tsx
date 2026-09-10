@@ -1072,7 +1072,7 @@ export default function App(){
     const fullName=regForm.name.trim();
     if(!uname||!regForm.password||!fullName){setRegErr("All fields required.");return;}
     if(regForm.password.length<8){setRegErr("Password must be at least 8 characters.");return;}
-    if(uname.toLowerCase()===DEV_ACCOUNT.username.toLowerCase()||data.users.some((u:any)=>u.username.toLowerCase()===uname.toLowerCase())){setRegErr("That username is already taken.");return;}
+    if(uname.toLowerCase()===DEV_ACCOUNT.username.toLowerCase()||data.users.some((u:any)=>(u.username||"").toLowerCase()===uname.toLowerCase())){setRegErr("That username is already taken.");return;}
     if(fullName.toLowerCase()===DEV_ACCOUNT.name.toLowerCase()||data.users.some((u:any)=>(u.name||"").trim().toLowerCase()===fullName.toLowerCase())){setRegErr("Someone is already registered with that name. If that's you, contact an officer — otherwise try adding a middle initial or last name.");return;}
     const passwordHash=await hashPassword(regForm.password);
     const nu={username:uname,passwordHash,name:fullName,role:"member",createdAt:new Date().toISOString(),completedProblemIds:[],codingSubmissions:{},attempts:{total:0,correct:0},streak:{current:0,best:0,lastDate:null}};
@@ -2090,12 +2090,63 @@ function OfficersPage({data,upd,isDev,user}:any){
           </div>
         ))}
       </div>
+      <RepairStatsBtn/>
       <BackupsPanel/>
       <AuditLogPanel/>
     </div>
   );
 }
 
+
+// One-click repair for accounts whose attempts/streak counters got corrupted into
+// NaN by the bug described above. The fix in ProblemView self-heals a given member's
+// data the next time THEY submit an answer, but this lets an officer fix everyone
+// immediately instead of waiting on that.
+async function repairCorruptedStats():Promise<{checked:number,fixed:number}>{
+  const snap=await getDocs(collection(db,"users"));
+  let fixed=0;
+  const ops:Promise<any>[]=[];
+  snap.docs.forEach(d=>{
+    const u:any=d.data();
+    const a=u.attempts||{};
+    const s=u.streak||{};
+    const attemptsBad=!Number.isFinite(a.total)||!Number.isFinite(a.correct);
+    const streakBad=!Number.isFinite(s.current)||!Number.isFinite(s.best);
+    if(attemptsBad||streakBad){
+      fixed++;
+      ops.push(setDoc(doc(db,"users",d.id),{
+        attempts:{total:Number(a.total)||0,correct:Number(a.correct)||0},
+        streak:{current:Number(s.current)||0,best:Number(s.best)||0,lastDate:s.lastDate||null},
+      },{merge:true}));
+    }
+  });
+  await Promise.all(ops);
+  return{checked:snap.size,fixed};
+}
+
+function RepairStatsBtn(){
+  const [busy,setBusy]=useState(false);
+  const [result,setResult]=useState<any>(null);
+  const run=async()=>{
+    setBusy(true);setResult(null);
+    try{ setResult(await repairCorruptedStats()); }
+    catch(e){ console.error(e); window.alert("Repair failed — check the console for details."); }
+    setBusy(false);
+  };
+  return(
+    <div style={{marginTop:32}}>
+      <h2 style={{margin:"0 0 8px",fontSize:18}}>Repair Member Stats</h2>
+      <p style={{color:C.muted,fontSize:12,margin:"0 0 14px"}}>
+        Fixes accounts whose attempt/streak counters got corrupted into NaN (shown as "0/0" on the
+        Accuracy leaderboard). Safe to run any time — only touches accounts that are actually broken.
+      </p>
+      <SecBtn onClick={run} disabled={busy} style={{fontSize:12,padding:"6px 14px"}}>{busy?"Checking...":"Check & repair stats"}</SecBtn>
+      {result&&<p style={{color:result.fixed>0?C.green:C.muted,fontSize:13,marginTop:10}}>
+        Checked {result.checked} member{result.checked!==1?"s":""} — {result.fixed>0?`fixed ${result.fixed}.`:"no issues found."}
+      </p>}
+    </div>
+  );
+}
 
 function BackupsPanel(){
   const [backups,setBackups]=useState<any[]>([]);
