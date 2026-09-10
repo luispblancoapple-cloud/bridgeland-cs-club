@@ -353,8 +353,8 @@ async function bootstrapClubData(){
         const merged={...u,
           completedProblemIds:(legacy.completions||{})[u.username]||[],
           codingSubmissions:(legacy.codingSubmissions||{})[u.username]||{},
-          attempts:(legacy.attempts||{})[u.username]||{},
-          streak:(legacy.streaks||{})[u.username]||{},
+          attempts:(legacy.attempts||{})[u.username]||{total:0,correct:0},
+          streak:(legacy.streaks||{})[u.username]||{current:0,best:0,lastDate:null},
         };
         ops.push(setDoc(doc(db,"users",u.username),merged,{merge:true}));
       });
@@ -1068,11 +1068,14 @@ export default function App(){
     if(f){setUser(f);setLoginErr("");}else setLoginErr("Invalid username or password.");
   };
   const register=async()=>{
-    if(!regForm.username||!regForm.password||!regForm.name){setRegErr("All fields required.");return;}
+    const uname=regForm.username.trim();
+    const fullName=regForm.name.trim();
+    if(!uname||!regForm.password||!fullName){setRegErr("All fields required.");return;}
     if(regForm.password.length<8){setRegErr("Password must be at least 8 characters.");return;}
-    if(data.users.find((u:any)=>u.username===regForm.username)||regForm.username===DEV_ACCOUNT.username){setRegErr("Username taken.");return;}
+    if(uname.toLowerCase()===DEV_ACCOUNT.username.toLowerCase()||data.users.some((u:any)=>u.username.toLowerCase()===uname.toLowerCase())){setRegErr("That username is already taken.");return;}
+    if(fullName.toLowerCase()===DEV_ACCOUNT.name.toLowerCase()||data.users.some((u:any)=>(u.name||"").trim().toLowerCase()===fullName.toLowerCase())){setRegErr("Someone is already registered with that name. If that's you, contact an officer — otherwise try adding a middle initial or last name.");return;}
     const passwordHash=await hashPassword(regForm.password);
-    const nu={username:regForm.username,passwordHash,name:regForm.name,role:"member",createdAt:new Date().toISOString()};
+    const nu={username:uname,passwordHash,name:fullName,role:"member",createdAt:new Date().toISOString(),completedProblemIds:[],codingSubmissions:{},attempts:{total:0,correct:0},streak:{current:0,best:0,lastDate:null}};
     upd((d:any)=>({...d,users:[...d.users,nu]}),{action:`${nu.name} (@${nu.username}) joined the club`,actorName:nu.name,actorUsername:nu.username});
     setUser(nu);setRegErr("");
   };
@@ -1331,7 +1334,7 @@ export default function App(){
                       <div key={unit.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveUnit(unit.id)}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                           <div style={{flex:1}}>
-                            <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{unit.title}</div>
+                            <div style={{fontWeight:700,fontSize:16,marginBottom:4,display:"flex",alignItems:"center",gap:8}}>{unit.title}{unit.level&&<Tag c={unit.level==="advanced"?C.red:C.green}>{unit.level==="advanced"?"Advanced":"Novice"}</Tag>}</div>
                             {unit.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{unit.desc}</div>}
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{probs.map((p:any)=><Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
                           </div>
@@ -1362,6 +1365,7 @@ export default function App(){
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
                             <span style={{fontWeight:600}}>{p.title}</span>
                             <Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
+                            {p.level&&<Tag c={p.level==="advanced"?C.red:C.green}>{p.level==="advanced"?"Advanced":"Novice"}</Tag>}
                             {done&&<Tag c={C.green}>✓ Solved</Tag>}
                           </div>
                         </div>
@@ -1408,7 +1412,7 @@ export default function App(){
                       <div key={cu.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveCodingUnit(cu.id)}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                           <div style={{flex:1}}>
-                            <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{cu.title}</div>
+                            <div style={{fontWeight:700,fontSize:16,marginBottom:4,display:"flex",alignItems:"center",gap:8}}>{cu.title}{cu.level&&<Tag c={cu.level==="advanced"?C.red:C.green}>{cu.level==="advanced"?"Advanced":"Novice"}</Tag>}</div>
                             {cu.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{cu.desc}</div>}
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{qs.map((q:any)=><Tag key={q.id} c={diffColor[q.difficulty]}>{q.title}</Tag>)}</div>
                           </div>
@@ -1440,6 +1444,7 @@ export default function App(){
                           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                             <span style={{fontWeight:700,fontSize:16}}>{cq.title}</span>
                             <Tag c={diffColor[cq.difficulty]||C.muted}>{cq.difficulty}</Tag>
+                            {cq.level&&<Tag c={cq.level==="advanced"?C.red:C.green}>{cq.level==="advanced"?"Advanced":"Novice"}</Tag>}
                             {cq.language&&<Tag c={C.purple}>{cq.language}</Tag>}
                           </div>
                           <div style={{fontSize:13,color:C.muted}}>{cq.desc?.split("\n")[0]}</div>
@@ -1699,15 +1704,17 @@ function CodingView({cq,user,data,upd,onBack}:any){
       <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
       <div style={{maxWidth:1100,margin:"0 auto",padding:"1.5rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding</OutBtn>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
           <span style={{fontWeight:700,fontSize:22}}>{cq.title}</span>
           <Tag c={diffColor[cq.difficulty]||C.muted}>{cq.difficulty}</Tag>
+          {cq.level&&<Tag c={cq.level==="advanced"?C.red:C.green}>{cq.level==="advanced"?"Advanced":"Novice"}</Tag>}
           {myBest!==null&&<Tag c={myBest===100?C.green:myBest>0?C.orange:C.red}>Best: {myBest}%</Tag>}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <div>
             <div style={{...cardS,marginBottom:12}}>
               <h3 style={{margin:"0 0 10px",fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Problem</h3>
+              {cq.image&&<img src={cq.image} alt="" style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,marginBottom:12,border:`1px solid ${C.border}`,background:C.bgInput}}/>}
               <div style={{fontSize:14,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{cq.desc}</div>
             </div>
             <div style={cardS}>
@@ -2310,7 +2317,8 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Problems</OutBtn>
         <div style={{background:`linear-gradient(135deg,${C.navy}99,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
-          {unit.desc&&<p style={{color:C.muted,margin:"0 0 16px",fontSize:14}}>{unit.desc}</p>}
+          {unit.level&&<Tag c={unit.level==="advanced"?C.red:C.green}>{unit.level==="advanced"?"Advanced":"Novice"}</Tag>}
+          {unit.desc&&<p style={{color:C.muted,margin:"8px 0 16px",fontSize:14}}>{unit.desc}</p>}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:13,color:C.muted}}>{probs.length} problems · {probs.filter((p:any)=>myCompleted.some((id:any)=>String(id)===String(p.id))).length} solved</span>
             <Btn onClick={startUnit}>Start unit →</Btn>
@@ -2319,7 +2327,7 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
         {probs.map((p:any,i:number)=>{const done=myCompleted.some((id:any)=>String(id)===String(p.id));return(
           <div key={p.id} style={{...cardS,display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${done?C.green:C.border}`,background:done?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:done?"#fff":C.muted,flexShrink:0}}>{done?"✓":i+1}</div>
-            <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}><span style={{fontWeight:600}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag></div>
+            <div style={{flex:1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontWeight:600}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>{p.level&&<Tag c={p.level==="advanced"?C.red:C.green}>{p.level==="advanced"?"Advanced":"Novice"}</Tag>}</div>
           </div>
         );})}
       </div>
@@ -2338,7 +2346,8 @@ function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding Questions</OutBtn>
         <div style={{background:`linear-gradient(135deg,${C.navy}99,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
-          {unit.desc&&<p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>{unit.desc}</p>}
+          {unit.level&&<Tag c={unit.level==="advanced"?C.red:C.green}>{unit.level==="advanced"?"Advanced":"Novice"}</Tag>}
+          {unit.desc&&<p style={{color:C.muted,margin:"8px 0 8px",fontSize:14}}>{unit.desc}</p>}
           <div style={{fontSize:13,color:C.muted}}>{qs.length} question{qs.length!==1?"s":""} · {solved} solved perfectly</div>
         </div>
         {qs.length===0&&<p style={{color:C.muted}}>No questions in this unit.</p>}
@@ -2350,6 +2359,7 @@ function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
               <div style={{flex:1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                 <span style={{fontWeight:600}}>{q.title}</span>
                 <Tag c={diffColor[q.difficulty]||C.muted}>{q.difficulty}</Tag>
+                {q.level&&<Tag c={q.level==="advanced"?C.red:C.green}>{q.level==="advanced"?"Advanced":"Novice"}</Tag>}
                 {q.language&&<Tag c={C.purple}>{q.language}</Tag>}
               </div>
               {pct!==null&&<div style={{fontWeight:700,fontSize:14,color:pct===100?C.green:pct>0?C.orange:C.red}}>{pct}%</div>}
@@ -2373,9 +2383,19 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
     setResult(correct);setSubmitted(true);
     upd((d:any)=>{
       const today=new Date().toISOString().slice(0,10);
-      const ua=d.attempts[user.username]||{total:0,correct:0};
+      // BUGFIX: an existing-but-empty object (e.g. {} for a member who's never
+      // attempted anything, which is what a brand-new or migrated account actually
+      // has) is truthy in JS, so a bare `||{total:0,correct:0}` fallback never
+      // triggers for it — ua.total ends up undefined, and undefined+1 is NaN,
+      // permanently, since NaN+1 is always NaN on every submission after that.
+      // Coercing each field individually with Number(x)||0 fixes this going forward
+      // AND self-heals any account that's already stuck at NaN, the next time they
+      // submit — Number(NaN)||0 correctly resolves back to 0.
+      const rawUa=d.attempts[user.username]||{};
+      const ua={total:Number(rawUa.total)||0,correct:Number(rawUa.correct)||0};
       const na={total:ua.total+1,correct:ua.correct+(correct?1:0)};
-      const s=d.streaks[user.username]||{lastDate:null,current:0,best:0};
+      const rawS=d.streaks[user.username]||{};
+      const s={lastDate:rawS.lastDate||null,current:Number(rawS.current)||0,best:Number(rawS.best)||0};
       let ns={...s};
       if(correct){
         const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
@@ -2403,6 +2423,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
             <span style={{fontWeight:700,fontSize:18}}>{prob.title}</span>
             <Tag c={diffColor[prob.difficulty]}>{prob.difficulty}</Tag>
+            {prob.level&&<Tag c={prob.level==="advanced"?C.red:C.green}>{prob.level==="advanced"?"Advanced":"Novice"}</Tag>}
             {completed&&<Tag c={C.green}>✓ Solved</Tag>}
           </div>
           <div style={{fontSize:15,lineHeight:1.7,marginBottom:prob.image?12:20}}>{prob.desc}</div>
@@ -2487,8 +2508,8 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
   const probModalOpen=modal==="prob"||isEditProb;
   const [selProbs,setSelProbs]=useState(editUnit?[...editUnit.problemIds]:[]);
   const [selCodingQs,setSelCodingQs]=useState(editCodingUnit?[...editCodingUnit.codingQuestionIds]:[]);
-  const [f,setF]=useState<any>(editProb?{difficulty:editProb.difficulty,choices:[...editProb.choices],answer:editProb.answer,image:editProb.image||"",selectedProblemIds:[],selectedCodingQIds:[],title:editProb.title,body:"",date:"",time:"2:40 PM",location:"",desc:editProb.desc,url:""}:{difficulty:"Easy",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],selectedCodingQIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
-  const [cqForm,setCqForm]=useState<any>(editCQ?{...editCQ,testCases:[...(editCQ.testCases||[])],starterCodes:editCQ.starterCodes||{}}:{title:"",difficulty:"Easy",language:"Java",desc:"",starterCodes:{},testCases:[{input:"",expected:""}]});
+  const [f,setF]=useState<any>(editProb?{difficulty:editProb.difficulty,level:editProb.level||"",choices:[...editProb.choices],answer:editProb.answer,image:editProb.image||"",selectedProblemIds:[],selectedCodingQIds:[],title:editProb.title,body:"",date:"",time:"2:40 PM",location:"",desc:editProb.desc,url:""}:{difficulty:"Easy",level:"",choices:["","","",""],answer:0,image:"",selectedProblemIds:[],selectedCodingQIds:[],title:"",body:"",date:"",time:"2:40 PM",location:"",desc:"",url:""});
+  const [cqForm,setCqForm]=useState<any>(editCQ?{...editCQ,testCases:[...(editCQ.testCases||[])],starterCodes:editCQ.starterCodes||{},level:editCQ.level||"",image:editCQ.image||""}:{title:"",difficulty:"Easy",language:"Java",level:"",image:"",desc:"",starterCodes:{},testCases:[{input:"",expected:""}]});
   const set=(patch:any)=>setF((prev:any)=>({...prev,...patch}));
   const setChoice=(i:number,v:string)=>setF((p:any)=>{const c=[...p.choices];c[i]=v;return{...p,choices:c};});
   const toggleProb=(id:any)=>setF((p:any)=>({...p,selectedProblemIds:p.selectedProblemIds.includes(id)?p.selectedProblemIds.filter((x:any)=>x!==id):[...p.selectedProblemIds,id]}));
@@ -2653,12 +2674,14 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           {cqErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {cqErr}</div>}
           <label style={lbl}>Title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10}} value={cqForm.title} onChange={(e:any)=>setCqForm((f:any)=>({...f,title:e.target.value}))} placeholder="e.g. Sum Two Numbers"/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
             <div><label style={lbl}>Difficulty</label><select style={inp} value={cqForm.difficulty} onChange={(e:any)=>setCqForm((f:any)=>({...f,difficulty:e.target.value}))}><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
             <div><label style={lbl}>Language hint</label><select style={inp} value={cqForm.language} onChange={(e:any)=>setCqForm((f:any)=>({...f,language:e.target.value}))}>{LANGS.map(l=><option key={l}>{l}</option>)}</select></div>
+            <div><label style={lbl}>Level (optional)</label><select style={inp} value={cqForm.level||""} onChange={(e:any)=>setCqForm((f:any)=>({...f,level:e.target.value}))}><option value="">None</option><option value="novice">Novice</option><option value="advanced">Advanced</option></select></div>
           </div>
           <label style={lbl}>Problem description <span style={{color:C.red}}>*</span></label>
           <textarea style={{...inp,height:100,resize:"vertical",marginBottom:10}} value={cqForm.desc} onChange={(e:any)=>setCqForm((f:any)=>({...f,desc:e.target.value}))} placeholder="Describe the problem. Include examples."/>
+          <ImgPick label="Add image to problem (optional)" preview={cqForm.image} onPick={(v:string)=>setCqForm((f:any)=>({...f,image:v}))}/>
           <label style={lbl}>Starter code per language</label>
           <div style={{background:C.bgInput,border:`1px solid ${C.border}`,borderRadius:8,padding:10,marginBottom:14}}>
             <p style={{fontSize:11,color:C.muted,margin:"0 0 10px"}}>Provide starter code for each language. Students see the one matching their selected language.</p>
@@ -2717,7 +2740,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       if(!f.desc.trim()){setFormErr("Question text is required.");return;}
       const emptyChoice=f.choices.findIndex((c:string)=>!c.trim());
       if(emptyChoice!==-1){setFormErr(`Choice ${String.fromCharCode(65+emptyChoice)} cannot be empty.`);return;}
-      const payload={title:f.title.trim(),difficulty:f.difficulty,desc:f.desc.trim(),choices:f.choices.map((c:string)=>c.trim()),answer:Number(f.answer),image:f.image||""};
+      const payload={title:f.title.trim(),difficulty:f.difficulty,level:f.level||"",desc:f.desc.trim(),choices:f.choices.map((c:string)=>c.trim()),answer:Number(f.answer),image:f.image||""};
       if(isEditProb){
         upd((d:any)=>({...d,problems:(d.problems||[]).map((p:any)=>p.id===editProb.id?{...p,...payload}:p)}),{action:`Edited problem "${payload.title}"`});
       }else{
@@ -2726,12 +2749,12 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     } else if(modal==="unit"){
       if(!f.title.trim()){setFormErr("Unit title is required.");return;}
       if(!f.selectedProblemIds.length){setFormErr("Select at least one problem.");return;}
-      upd((d:any)=>({...d,units:[...(d.units||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",problemIds:f.selectedProblemIds}]}),{action:`Created unit "${f.title.trim()}"`});
+      upd((d:any)=>({...d,units:[...(d.units||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",level:f.level||"",problemIds:f.selectedProblemIds}]}),{action:`Created unit "${f.title.trim()}"`});
       notify("all","New practice unit",f.title.trim());
     } else if(modal==="codingUnit"){
       if(!f.title.trim()){setFormErr("Unit title is required.");return;}
       if(!f.selectedCodingQIds.length){setFormErr("Select at least one coding question.");return;}
-      upd((d:any)=>({...d,codingUnits:[...(d.codingUnits||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",codingQuestionIds:f.selectedCodingQIds}]}),{action:`Created coding unit "${f.title.trim()}"`});
+      upd((d:any)=>({...d,codingUnits:[...(d.codingUnits||[]),{id:uid(),title:f.title.trim(),desc:f.desc||"",level:f.level||"",codingQuestionIds:f.selectedCodingQIds}]}),{action:`Created coding unit "${f.title.trim()}"`});
       notify("all","New coding unit",f.title.trim());
     }
     close();
@@ -2775,6 +2798,8 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <input style={{...inp,marginBottom:10,borderColor:(!f.title.trim()&&formErr)?C.red:C.border}} value={f.title} onChange={(e:any)=>set({title:e.target.value})} placeholder="e.g. FizzBuzz"/>
           <label style={lbl}>Difficulty</label>
           <select style={{...inp,marginBottom:10}} value={f.difficulty} onChange={(e:any)=>set({difficulty:e.target.value})}><option>Easy</option><option>Medium</option><option>Hard</option></select>
+          <label style={lbl}>Level (optional)</label>
+          <select style={{...inp,marginBottom:10}} value={f.level||""} onChange={(e:any)=>set({level:e.target.value})}><option value="">None</option><option value="novice">Novice</option><option value="advanced">Advanced</option></select>
           <label style={lbl}>Question <span style={{color:C.red}}>*</span></label>
           <textarea style={{...inp,height:72,resize:"vertical",marginBottom:14,borderColor:(!f.desc.trim()&&formErr)?C.red:C.border}} value={f.desc} onChange={(e:any)=>set({desc:e.target.value})} placeholder="What is the question?"/>
           <ImgPick label="Add image to question (optional)" preview={f.image} onPick={(v:string)=>set({image:v})}/>
@@ -2790,7 +2815,9 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <label style={lbl}>Unit title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10,borderColor:(!f.title.trim()&&formErr)?C.red:C.border}} value={f.title} placeholder="e.g. Intro to Data Structures" onChange={(e:any)=>set({title:e.target.value})}/>
           <label style={lbl}>Description (optional)</label>
-          <input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
+          <input style={{...inp,marginBottom:10}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
+          <label style={lbl}>Level (optional)</label>
+          <select style={{...inp,marginBottom:14}} value={f.level||""} onChange={(e:any)=>set({level:e.target.value})}><option value="">None</option><option value="novice">Novice</option><option value="advanced">Advanced</option></select>
           <label style={lbl}>Select problems <span style={{color:C.red}}>*</span></label>
           <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedProblemIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
             {(data.problems||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet. Create some first.</p>}
@@ -2808,7 +2835,9 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <label style={lbl}>Unit title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10,borderColor:(!f.title.trim()&&formErr)?C.red:C.border}} value={f.title} placeholder="e.g. Loops & Iteration" onChange={(e:any)=>set({title:e.target.value})}/>
           <label style={lbl}>Description (optional)</label>
-          <input style={{...inp,marginBottom:14}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
+          <input style={{...inp,marginBottom:10}} value={f.desc} placeholder="Brief description" onChange={(e:any)=>set({desc:e.target.value})}/>
+          <label style={lbl}>Level (optional)</label>
+          <select style={{...inp,marginBottom:14}} value={f.level||""} onChange={(e:any)=>set({level:e.target.value})}><option value="">None</option><option value="novice">Novice</option><option value="advanced">Advanced</option></select>
           <label style={lbl}>Select coding questions <span style={{color:C.red}}>*</span></label>
           <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedCodingQIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
             {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No coding questions yet. Create some first.</p>}
