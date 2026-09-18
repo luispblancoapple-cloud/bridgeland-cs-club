@@ -86,6 +86,32 @@ const LANG_IDS:any={"Python":71,"Java":62,"C++":54};
 // "input" is the raw text fed to the program's stdin; "expected" is the raw text the
 // program should print. No source-code wrapping/injection needed, since the program
 // is already complete — Judge0 runs it directly with that test case's stdin.
+// Runs the code ONCE against arbitrary custom input and returns the raw output —
+// used for the "test with your own input" panel, as opposed to runWithJudge0()
+// above which grades against the problem's hidden test cases.
+async function runCustom(code:string,lang:string,stdin:string):Promise<any>{
+  const langId=LANG_IDS[lang]||93;
+  const PUBLIC="https://ce.judge0.com";
+  try{
+    const sub=await fetch(`${PUBLIC}/submissions?base64_encoded=false&wait=true`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify({source_code:code,language_id:langId,stdin:stdin||"",cpu_time_limit:5,memory_limit:262144}),
+    });
+    if(!sub.ok)throw new Error(`Judge0 error ${sub.status}`);
+    const result=await sub.json();
+    const stdout=(result.stdout||"").trim();
+    const stderr=(result.stderr||"").trim();
+    const compileErr=(result.compile_output||"").trim();
+    if(result.status?.id===6)return{kind:"compile_error",text:compileErr||"Compile error"};
+    if(result.status?.id===5)return{kind:"timeout",text:"Time limit exceeded"};
+    if(result.status?.id!==3)return{kind:"runtime_error",text:stderr||compileErr||result.status?.description||"Runtime error"};
+    return{kind:"ok",text:stdout,stderr};
+  }catch(e:any){
+    return{kind:"error",text:"Connection error — Judge0 may be temporarily unavailable. Try again in a moment."};
+  }
+}
+
 async function runWithJudge0(code:string,lang:string,testCases:any[]):Promise<any[]>{
   const langId=LANG_IDS[lang]||93;
   const PUBLIC="https://ce.judge0.com";
@@ -1207,7 +1233,11 @@ export default function App(){
             {!isGuest&&(
               <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
               <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
-                {[...(data.users||[])].filter((u:any)=>u.role==="member").map((u:any)=>({name:u.name||u.username,username:u.username,count:((data.completions||{})[u.username]||[]).length})).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
+                {[...(data.users||[])].filter((u:any)=>u.role==="member").map((u:any)=>{
+                  const subs=((data.codingSubmissions||{})[u.username])||{};
+                  const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
+                  return{name:u.name||u.username,username:u.username,count:perfect};
+                }).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
                     <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.orange}28`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.orange:C.muted,flexShrink:0}}>{i+1}</div>
                     <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
@@ -1666,14 +1696,28 @@ function CodingView({cq,user,data,upd,onBack}:any){
     "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n\n        // your code here\n\n    }\n}",
     "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // your code here\n\n    return 0;\n}",
   };
-  const initLang=(cq.language&&LANGS.includes(cq.language))?cq.language:"Java";
+  const mySub=((data.codingSubmissions||{})[user?.username]||{})[cq.id];
+  const initLang=(mySub?.lang&&LANGS.includes(mySub.lang))?mySub.lang:((cq.language&&LANGS.includes(cq.language))?cq.language:"Java");
   const [lang,setLang]=useState(initLang);
   const getStarter=(l:string)=>(cq.starterCodes||{})[l]||cq.starterCode||STARTER[l]||STARTER["Python"];
-  const [code,setCode]=useState(getStarter(initLang));
+  // Reopening a problem restores your last-saved attempt (in the language you saved
+  // it in) instead of always resetting to starter code — including a fully solved
+  // problem, so you can see/keep working from a completed solution.
+  const [code,setCode]=useState(mySub&&mySub.lang===initLang&&mySub.code?mySub.code:getStarter(initLang));
   const [results,setResults]=useState<any>(null);
   const [running,setRunning]=useState(false);
   const [runErr,setRunErr]=useState("");
   const myBest=((data.codingSubmissions||{})[user?.username]||{})[cq.id]?.score??null;
+
+  const [customInput,setCustomInput]=useState("");
+  const [customOutput,setCustomOutput]=useState<any>(null);
+  const [customRunning,setCustomRunning]=useState(false);
+  const runCustomTest=async()=>{
+    setCustomRunning(true);setCustomOutput(null);
+    const res=await runCustom(code,lang,customInput);
+    setCustomOutput(res);
+    setCustomRunning(false);
+  };
 
   const switchLang=(l:string)=>{
     setLang(l);
@@ -1688,9 +1732,15 @@ function CodingView({cq,user,data,upd,onBack}:any){
       const passed=res.filter((r:any)=>r.pass).length;
       const tcLen=(cq.testCases||[]).length;
       const score=tcLen>0?Math.round((passed/tcLen)*100):0;
-      if(score>(myBest??-1)){
-        upd((d:any)=>({...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score,code,lang,timestamp:new Date().toISOString()}}}}));
-      }
+      // Code is now saved on every run — even an unsuccessful one — so reopening
+      // the problem always resumes your latest work, not just your best-scoring
+      // attempt. The recorded "best score" (used for the Best% tag and the coding
+      // leaderboard) still only ever goes up, computed fresh from current data here
+      // rather than from the possibly-stale `myBest` captured at render time.
+      upd((d:any)=>{
+        const prevBest=(((d.codingSubmissions||{})[user.username]||{})[cq.id])?.score??-1;
+        return{...d,codingSubmissions:{...(d.codingSubmissions||{}),[user.username]:{...((d.codingSubmissions||{})[user.username]||{}),[cq.id]:{score:Math.max(score,prevBest),code,lang,timestamp:new Date().toISOString()}}}};
+      });
     }catch(e:any){setRunErr(e.message);}
     setRunning(false);
   };
@@ -1741,6 +1791,19 @@ function CodingView({cq,user,data,upd,onBack}:any){
                   {running?<span style={{display:"flex",alignItems:"center",gap:8}}><span style={{display:"inline-block",width:12,height:12,border:`2px solid #ffffff55`,borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>Running…</span>:"▶ Run code"}
                 </Btn>
               </div>
+            </div>
+            <div style={{...cardS,marginBottom:12}}>
+              <h3 style={{margin:"0 0 10px",fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Test with your own input</h3>
+              <textarea value={customInput} onChange={(e:any)=>setCustomInput(e.target.value)} placeholder="Enter input to program here" style={{...inp,height:80,resize:"vertical",fontFamily:"monospace",fontSize:13,marginBottom:8}}/>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:customOutput?10:0}}>
+                <SecBtn onClick={runCustomTest} disabled={customRunning}>{customRunning?"Running...":"▶ Run with this input"}</SecBtn>
+              </div>
+              {customOutput&&(
+                <div style={{background:"#0a0c10",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",fontFamily:"monospace",fontSize:12,whiteSpace:"pre-wrap",color:customOutput.kind==="ok"?"#d1d5db":C.red,maxHeight:220,overflowY:"auto"}}>
+                  {customOutput.kind==="ok"?(customOutput.text||"(no output)"):customOutput.text}
+                  {customOutput.kind==="ok"&&customOutput.stderr&&<div style={{color:C.red,marginTop:6}}>{customOutput.stderr}</div>}
+                </div>
+              )}
             </div>
             {runErr&&<div style={{...cardS,borderLeft:`3px solid ${C.red}`,color:C.red,fontSize:13}}><strong>⚠ Error:</strong> {runErr}<div style={{marginTop:6,fontSize:12,color:C.muted}}>If this persists, Judge0 may be temporarily unavailable. Try again in a moment.</div></div>}
             {running&&!results&&(
