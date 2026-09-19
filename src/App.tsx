@@ -423,7 +423,7 @@ async function fetchAllForBackup(){
   return{
     exportedAt:new Date().toISOString(),
     problems:probSnap.docs.map(d=>d.data()),codingQuestions:cqSnap.docs.map(d=>d.data()),units:unitSnap.docs.map(d=>d.data()),codingUnits:cuSnap.docs.map(d=>d.data()),
-    announcements:annSnap.docs.map(d=>d.data()),events:evtSnap.docs.map(d=>d.data()),users:userSnap.docs.map(d=>d.data()),
+    announcements:annSnap.docs.map(d=>d.data()),events:evtSnap.docs.map(d=>d.data()),users:userSnap.docs.map(d=>({...d.data(),username:d.id})),
     about:aboutSnap.exists()?aboutSnap.data():null,site:siteSnap.exists()?siteSnap.data():null,officerPlanner:plannerSnap.exists()?plannerSnap.data():null,
   };
 }
@@ -1041,7 +1041,7 @@ export default function App(){
       onSnapshot(collection(db,"codingUnits"),snap=>{setCodingUnits(snap.docs.map(d=>d.data()));mark("codingUnits");},onErr("codingUnits")),
       onSnapshot(collection(db,"announcements"),snap=>{setAnnouncements(snap.docs.map(d=>d.data()));mark("announcements");},onErr("announcements")),
       onSnapshot(collection(db,"events"),snap=>{setEvents(snap.docs.map(d=>d.data()));mark("events");},onErr("events")),
-      onSnapshot(collection(db,"users"),snap=>{setUsersList(snap.docs.map(d=>d.data()));mark("users");},onErr("users")),
+      onSnapshot(collection(db,"users"),snap=>{setUsersList(snap.docs.map(d=>({...d.data(),username:d.id})));mark("users");},onErr("users")),
       onSnapshot(ABOUT_DOC,snap=>{setAboutState(snap.exists()?snap.data():initData.about);mark("about");},onErr("about")),
       onSnapshot(SITE_DOC,snap=>{setSite(snap.exists()?snap.data():{resources:initData.resources,pinnedAnnouncementId:null});mark("site");},onErr("site")),
       onSnapshot(PLANNER_DOC,snap=>{setOfficerPlanner(snap.exists()?snap.data():{officerTasks:[],officerEvents:[],googleCalendarId:""});mark("planner");},onErr("planner")),
