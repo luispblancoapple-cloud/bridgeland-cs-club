@@ -1210,6 +1210,13 @@ export default function App(){
           <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
           <span className="auth-art-spark auth-spark-one">✳</span>
           <span className="auth-art-spark auth-spark-two">＋</span>
+          <div className="auth-feature-card auth-topic-preview">
+            <div className="auth-feature-heading"><strong>UIL topic guide</strong><span>UNIT 1 OF 6</span></div>
+            <span className="auth-topic-kicker">START HERE</span>
+            <strong className="auth-topic-title">Java foundations</strong>
+            <div className="auth-topic-progress"><i/></div>
+            <div className="auth-topic-tags"><span>Primitive types</span><span>Branching</span><span>Loops</span></div>
+          </div>
         </aside>
         <div className="auth-wrap">
           <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Learn. Practice. Build.</h1></div>
@@ -1252,6 +1259,17 @@ export default function App(){
           </div>
           <span className="auth-art-caption">LEARN · PRACTICE · BUILD</span>
           <span className="auth-art-spark auth-spark-three">{ }</span>
+          <div className="auth-feature-card auth-leaderboard-preview">
+            <div className="auth-feature-heading"><strong>Leaderboard preview</strong><span>SAMPLE</span></div>
+            <div className="auth-leader-row"><b>01</b><span>Member</span><strong>320 pts</strong></div>
+            <div className="auth-leader-row"><b>02</b><span>Member</span><strong>285 pts</strong></div>
+            <div className="auth-leader-row"><b>03</b><span>Member</span><strong>260 pts</strong></div>
+          </div>
+          <div className="auth-feature-card auth-test-preview">
+            <div className="auth-feature-heading"><strong>UIL practice</strong><span>40 QUESTIONS</span></div>
+            <div className="auth-test-meta"><span>2026</span><span>District</span><span>45:00</span></div>
+            <div className="auth-test-bubbles"><i>A</i><i className="chosen">B</i><i>C</i><i>D</i><i>E</i></div>
+          </div>
         </aside>
       </main>
       <BugReportBtn user={null}/>
