@@ -2656,6 +2656,7 @@ function formatUILDuration(milliseconds:number){
 }
 
 function UILTestRunner({test,username,onBack,onStatusChange}:any){
+  const [benchmarkLevel,setBenchmarkLevel]=useState<"district"|"regional"|"state">("district");
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
   const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,pageTimeMs:{} as Record<string,number>,pageTimingAvailable:true,pageTimingComplete:true,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
@@ -2814,6 +2815,27 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
           </article>)}
         </div>
       </section>
+      <details className="uil-result-card uil-benchmark-card">
+        <summary>Compare with past UIL leaderboards <span>2025 · Conference 6A</span></summary>
+        <p>See how this practice score compares with the highest individual score reported for each round in 2025. This is a historical reference, not a predicted placement.</p>
+        <div className="uil-benchmark-tabs" role="group" aria-label="Historical UIL round">
+          {(["district","regional","state"] as const).map(level=><button key={level} type="button" aria-pressed={benchmarkLevel===level} className={benchmarkLevel===level?"active":""} onClick={()=>setBenchmarkLevel(level)}>{level[0].toUpperCase()+level.slice(1)}</button>)}
+        </div>
+        {(()=>{
+          const benchmarks={
+            district:{score:226,school:"Conroe Grand Oaks",url:"https://files.virtualchallengemeets.com/certs/vcm-results-2023-24/7zjywRPw/2025_District_Results.html"},
+            regional:{score:218,school:"Katy Seven Lakes",url:"https://virtualchallengemeets.com/data/uploads/2025_COMMISH_COMPILATIONS_-_REGION/2025_COMMISH_COMPILATIONS_-_REGION_-_ALL_EVENTS_-_UPDATED_ON_5_1_2025.pdf"},
+            state:{score:166,school:"Round Rock Westwood",url:"https://virtualchallengemeets.com/data/uploads/2025_COMMISH_COMPILATIONS_-_STATE/2025_COMMISH_COMPILATIONS_-_STATE_-_ALL_EVENTS.pdf"}
+          };
+          const benchmark=benchmarks[benchmarkLevel],difference=result.points-benchmark.score;
+          return <div className="uil-benchmark-comparison">
+            <div className="uil-benchmark-scores"><div><span>Your practice score</span><strong>{result.points}</strong></div><div><span>2025 {benchmarkLevel} high</span><strong>{benchmark.score}</strong></div></div>
+            <p>{difference===0?"You matched the highest score in this historical results list.":difference>0?`Your score is ${difference} points above the highest score in this historical results list.`:`Your score is ${Math.abs(difference)} points below the highest score in this historical results list.`} The listed high was from {benchmark.school}.</p>
+            <a href={benchmark.url} target="_blank" rel="noreferrer">View 2025 {benchmarkLevel} results ↗</a>
+          </div>;
+        })()}
+        <small className="uil-benchmark-note">Historical score lists are published by Virtual Challenge Meets. The UIL links to official meet results through SpeechWire; scoring can vary by year and contest round.</small>
+      </details>
       <button type="button" className="uil-results-back" onClick={onBack}>Back to UIL Prep</button>
     </main>;
   }
