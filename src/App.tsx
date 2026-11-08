@@ -652,9 +652,9 @@ function Header({user,onSignOut,onManage,isDev,page,navItems,navLabels,onNavigat
         </button>
         {user&&<>
           <NotificationBell user={user}/>
-          <span className="header-user">{user.name||user.username}</span>
+          {user.role!=="guest"&&<span className="header-user">{user.name||user.username}</span>}
           {user.role!=="member"&&user.role!=="guest"&&<Tag c={C.orange}>{user.role==="developer"?"Developer":"Officer"}</Tag>}
-          {user.role==="guest"&&<Tag c={C.guest}>guest</Tag>}
+          {user.role==="guest"&&<Tag c={C.guest}>Guest</Tag>}
           {isDev&&<Btn color={C.orange} onClick={onManage} style={{padding:"7px 12px",fontSize:12}}>Members</Btn>}
           <OutBtn onClick={onSignOut}>{"Sign out"}</OutBtn>
         </>}
