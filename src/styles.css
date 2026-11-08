@@ -373,6 +373,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-page-time-grid strong { color: var(--blue-text); font-size: 16px; font-variant-numeric: tabular-nums; }
 .uil-review-question-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .uil-review-question-list span { padding: 9px 13px; border: 1px solid var(--orange-33); border-radius: 999px; color: var(--orange-text); background: var(--orange-12); font-size: 14px; font-weight: 800; }
+.uil-review-subheading { margin: 18px 0 10px; color: var(--text); font-size: 17px; }
+.uil-review-topic-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 9px; }
+.uil-review-topic { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--orange-33); border-radius: 12px; background: linear-gradient(110deg, var(--orange-12), var(--surface-strong)); }
+.uil-review-topic strong { color: var(--text); font-size: 14px; line-height: 1.4; }
+.uil-review-topic span { flex: 0 0 auto; color: var(--orange-text); font-size: 12px; font-weight: 800; }
+.uil-review-topic.broad { border-color: var(--blue-33); background: linear-gradient(110deg, var(--blue-12), var(--surface-strong)); }
 .uil-right-question-list { color: var(--green) !important; }
 .uil-question-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 12px; }
 .uil-question-result { display: grid; gap: 7px; padding: 16px 18px; border: 1px solid var(--line); border-left: 5px solid var(--muted); border-radius: 12px; background: var(--surface-strong); overflow-wrap: anywhere; }

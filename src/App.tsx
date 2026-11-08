@@ -2792,6 +2792,8 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
   if(attempt.submittedAt&&result){
     const missed=result.details.filter((detail:any)=>!detail.correct);
     const right=result.details.filter((detail:any)=>detail.correct);
+    const missedTipTopics=FIRST_15_TIPS.map((tip:any,index:number)=>({title:tip.title.replace(/^\d+\.\s*/,""),question:index+1})).filter((topic:any)=>missed.some((detail:any)=>detail.question===topic.question));
+    const missedBeyondTips=missed.filter((detail:any)=>detail.question>FIRST_15_TIPS.length);
     const legacyTiming=!Object.prototype.hasOwnProperty.call(attempt,"pageTimingAvailable");
     const pageTimes=attempt.pageTimingAvailable===false?[]:Array.from({length:pdfPages.length},(_,index)=>({page:index+1,milliseconds:Object.prototype.hasOwnProperty.call(attempt.pageTimeMs||{},index)?attempt.pageTimeMs[index]:null,unvisited:attempt.pageTimingComplete&& !Object.prototype.hasOwnProperty.call(attempt.pageTimeMs||{},index)}));
     const totalTime=attempt.submittedAt-attempt.startedAt;
@@ -2820,7 +2822,10 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
       </section>
       <section className="uil-result-card">
         <h2>What to work on</h2>
-        {missed.length?<><p>Review these questions in your next study session, then revisit the related topics in the Topic Guide.</p><div className="uil-review-question-list">{missed.map((detail:any)=><span key={detail.question}>Question {detail.question}</span>)}</div></>:<p>You answered every question correctly. Keep practicing to stay sharp.</p>}
+        {missed.length?<><p>Review these questions in your next study session, then revisit the related topics in the Topic Guide.</p>
+          {missedTipTopics.length>0&&<><h3 className="uil-review-subheading">Main topics from the first 15</h3><div className="uil-review-topic-list">{missedTipTopics.map((topic:any)=><div className="uil-review-topic" key={topic.question}><strong>{topic.title}</strong><span>Question {topic.question}</span></div>)}</div></>}
+          {missedBeyondTips.length>0&&<><h3 className="uil-review-subheading">Main UIL topic areas for the other missed questions</h3><p>Use the question breakdown below to match these questions to the relevant area in the Topic Guide.</p><div className="uil-review-topic-list">{UIL_TOPIC_UNITS.map((unit:any)=><div className="uil-review-topic broad" key={unit.title}><strong>{unit.title}</strong></div>)}</div></>}
+          <h3 className="uil-review-subheading">Questions to revisit</h3><div className="uil-review-question-list">{missed.map((detail:any)=><span key={detail.question}>Question {detail.question}</span>)}</div></>:<p>You answered every question correctly. Keep practicing to stay sharp.</p>}
       </section>
       <section className="uil-result-card">
         <h2>Question breakdown</h2>
@@ -2828,6 +2833,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
         <div className="uil-question-results">
           {result.details.map((detail:any)=><article key={detail.question} className={`uil-question-result${detail.correct?" correct":detail.answered?" incorrect":" unanswered"}`}>
             <strong>Question {detail.question} · {detail.correct?"Correct":detail.answered?"Incorrect":"Unanswered"}</strong>
+            {detail.question<=FIRST_15_TIPS.length&&<span><b>Main topic:</b> {FIRST_15_TIPS[detail.question-1].title.replace(/^\d+\.\s*/,"")}</span>}
             <span>Your answer: {detail.response||"—"}</span>
             <span>Correct answer: {detail.expected?detail.expected.split("||").join(" or "):"Unavailable"}</span>
           </article>)}
