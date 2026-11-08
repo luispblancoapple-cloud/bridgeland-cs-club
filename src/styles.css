@@ -131,8 +131,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   grid-template-columns: auto minmax(240px, 1fr) auto;
   align-items: center;
   gap: 18px;
-  min-height: 82px;
-  padding: 10px clamp(16px, 3.4vw, 52px);
+  min-height: 104px;
+  padding: 14px clamp(20px, 3.4vw, 56px);
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--canvas) 78%, transparent);
   box-shadow: 0 8px 32px rgba(32, 68, 91, .08);
@@ -151,43 +151,43 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   cursor: pointer;
   text-align: left;
   font-family: Manrope, 'DM Sans', sans-serif;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -.035em;
 }
 .brand-link:hover { color: var(--navy); transform: translateY(-1px); }
 :root[data-theme="dark"] .brand-link:hover { color: var(--blue); }
-.brand-logo { width: 48px; height: 48px; border: 2px solid var(--orange); border-radius: 16px; object-fit: cover; box-shadow: 0 5px 18px var(--orange-18); }
+.brand-logo { width: 56px; height: 56px; border: 2px solid var(--orange); border-radius: 18px; object-fit: cover; box-shadow: 0 5px 18px var(--orange-18); }
 .site-nav { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .site-nav::-webkit-scrollbar { display: none; }
 .nav-link {
   flex: 0 0 auto;
-  padding: 10px 11px;
+  padding: 12px 13px;
   border: 1px solid transparent;
   border-radius: 12px;
   color: var(--muted);
   background: transparent;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
 }
 .nav-link:hover { color: var(--text); background: var(--surface); }
 .nav-link.active { color: var(--text); border-color: var(--line); background: var(--surface-strong); box-shadow: 0 4px 14px rgba(34, 68, 90, .08); }
 .nav-link.active::after { content: ''; display: block; width: 18px; height: 2px; margin: 4px auto -6px; border-radius: 4px; background: var(--orange); }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; min-width: max-content; }
-.header-user { max-width: 150px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.header-user { max-width: 180px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .theme-toggle {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 12px;
+  padding: 11px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   color: var(--text);
   background: var(--surface);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 .theme-toggle:hover { border-color: var(--orange); box-shadow: 0 5px 16px var(--orange-14); transform: translateY(-1px); }
@@ -405,19 +405,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 1120px) {
-  .site-header { grid-template-columns: 1fr auto; gap: 4px 14px; }
-  .site-nav { grid-column: 1 / -1; grid-row: 2; width: 100%; padding: 2px 0 4px; }
+  .site-header { grid-template-columns: 1fr auto; gap: 8px 16px; padding-top: 12px; padding-bottom: 12px; }
+  .site-nav { grid-column: 1 / -1; grid-row: 2; width: 100%; padding: 4px 0 6px; }
   .header-actions { grid-column: 2; grid-row: 1; }
 }
 @media (max-width: 620px) {
-  .site-header { min-height: 0; padding: 10px 14px 8px; gap: 6px 8px; }
-  .brand-link { gap: 8px; font-size: 14px; }
-  .brand-logo { width: 40px; height: 40px; border-radius: 13px; }
-  .theme-toggle { padding: 8px 10px; }
+  .site-header { min-height: 0; padding: 12px 16px 10px; gap: 8px 10px; }
+  .brand-link { gap: 9px; font-size: 16px; }
+  .brand-logo { width: 44px; height: 44px; border-radius: 14px; }
+  .theme-toggle { padding: 9px 11px; }
   .theme-label, .header-user { display: none; }
   .header-actions { gap: 6px; }
   .site-nav { margin-top: 2px; }
-  .nav-link { padding: 8px 10px; }
+  .nav-link { padding: 9px 11px; font-size: 13px; }
   .auth-stage { width: min(100% - 28px, 680px); min-height: calc(100vh - 66px); padding: 24px 0 28px; }
   .auth-panel { padding: 1.4rem !important; }
 }
