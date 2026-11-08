@@ -1,3 +1,5 @@
+import { UIL_ANSWER_KEYS } from "./uilAnswerKeys";
+
 export type UILTest = {
   id: string;
   year: number;
@@ -9,6 +11,7 @@ export type UILTest = {
   pointsCorrect: number;
   penaltyIncorrect: number;
   writtenQuestions: number[];
+  answerKey?: string[];
 };
 
 const archive: Record<number, string> = {
@@ -69,6 +72,7 @@ export const UIL_TESTS: UILTest[] = Object.entries(files).flatMap(([year, tests]
     pointsCorrect: 6,
     penaltyIncorrect: 2,
     writtenQuestions: year === "2026" && level === "Invitational B" ? [1, 39, 40] : [39, 40],
+    answerKey: UIL_ANSWER_KEYS[`${year}-${level.toLowerCase().replaceAll(" ", "-")}`],
   })),
 ).sort((a, b) => b.year - a.year || a.level.localeCompare(b.level));
 

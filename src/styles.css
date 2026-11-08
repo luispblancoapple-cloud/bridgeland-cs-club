@@ -191,11 +191,72 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 700;
 }
 .theme-toggle:hover { border-color: var(--orange); box-shadow: 0 5px 16px var(--orange-14); transform: translateY(-1px); }
-.auth-wrap { width: min(100% - 32px, 440px); margin: 46px auto 60px; }
+.auth-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(170px, .78fr) minmax(460px, 560px) minmax(190px, .9fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 72px);
+  width: min(100% - 64px, 1320px);
+  min-height: calc(100vh - 82px);
+  margin: 0 auto;
+  padding: 32px 0 50px;
+}
+.auth-stage::before, .auth-stage::after {
+  position: absolute;
+  z-index: -1;
+  width: 330px;
+  height: 330px;
+  border-radius: 50%;
+  content: '';
+  filter: blur(4px);
+  pointer-events: none;
+}
+.auth-stage::before { top: 12%; left: 3%; background: radial-gradient(circle, var(--blue-18), transparent 70%); }
+.auth-stage::after { right: 2%; bottom: 8%; background: radial-gradient(circle, var(--orange-18), transparent 70%); }
+.auth-wrap { width: 100%; max-width: 560px; margin: 0 auto; }
 .auth-intro { margin: 0 0 22px; text-align: center; }
 .auth-intro .eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .auth-intro h1 { margin: 10px 0 6px; font-family: Manrope, sans-serif; font-size: clamp(27px, 5vw, 38px); letter-spacing: -.055em; }
 .auth-intro p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.auth-panel { border-radius: 20px !important; box-shadow: 0 24px 64px rgba(25, 60, 90, .14) !important; backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%); }
+.auth-art { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
+.auth-bear-art { min-height: 270px; }
+.auth-bear-orbit {
+  position: relative;
+  display: grid;
+  width: clamp(150px, 15vw, 220px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, var(--surface-strong), var(--surface) 60%, transparent 100%);
+  box-shadow: inset 0 0 50px var(--blue-18), 0 20px 60px rgba(25, 60, 90, .09);
+}
+.auth-bear-orbit::before, .auth-bear-orbit::after { position: absolute; border: 1px solid var(--blue-33); border-radius: 50%; content: ''; }
+.auth-bear-orbit::before { inset: 12px; }
+.auth-bear-orbit::after { inset: -12px; border-color: var(--orange-33); }
+.auth-bear-orbit img { width: 60%; height: 60%; border: 4px solid var(--orange); border-radius: 28%; object-fit: cover; box-shadow: 0 12px 35px var(--orange-22); }
+.auth-art-caption { margin-top: 24px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .16em; line-height: 1.7; text-align: center; }
+.auth-art-spark { position: absolute; color: var(--orange); font-family: Manrope, sans-serif; font-weight: 700; }
+.auth-spark-one { top: 8%; right: 8%; font-size: 27px; }
+.auth-spark-two { bottom: 19%; left: 2%; color: var(--blue-text); font-size: 34px; }
+.auth-code-art { gap: 0; }
+.auth-code-card { width: min(100%, 285px); padding: 15px 17px 16px; border: 1px solid var(--line); border-radius: 16px; color: var(--text); background: var(--surface); box-shadow: 0 20px 55px rgba(25, 60, 90, .11); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); transform: rotate(2deg); }
+.auth-code-top { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.auth-code-dots { display: inline-flex; gap: 4px; }
+.auth-code-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+.auth-code-dots i:nth-child(2) { background: var(--blue); }
+.auth-code-dots i:nth-child(3) { background: var(--green); }
+.auth-code-card pre { overflow: hidden; margin: 15px 0; color: var(--muted); font: 11px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.code-purple { color: var(--purple); font-weight: 700; }
+.code-blue { color: var(--blue-text); font-weight: 700; }
+.code-green { color: var(--green); }
+.auth-code-prompt { display: block; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.auth-cursor { color: var(--orange-text); animation: auth-blink 1s steps(2, start) infinite; }
+.auth-spark-three { top: 11%; left: 1%; color: var(--blue-text); font: 700 24px ui-monospace, monospace; }
+@keyframes auth-blink { to { visibility: hidden; } }
 .app-shell [style*="var(--surface)"] { box-shadow: var(--shadow); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); }
 .app-shell [style*="background: var(--orange)"][style*="color: #fff"] { color: var(--accent-ink) !important; }
 .app-shell input, .app-shell textarea, .app-shell select { color: var(--text) !important; }
@@ -226,6 +287,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .uil-answer-bubble { min-width: 27px; }
 }
 
+@media (max-width: 1040px) {
+  .auth-stage { display: block; width: min(100% - 40px, 620px); min-height: 0; padding: 34px 0 48px; }
+  .auth-art { display: none; }
+  .auth-wrap { max-width: 560px; }
+}
+
 @media (max-width: 1120px) {
   .site-header { grid-template-columns: 1fr auto; gap: 4px 14px; }
   .site-nav { grid-column: 1 / -1; grid-row: 2; width: 100%; padding: 2px 0 4px; }
@@ -240,7 +307,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .header-actions { gap: 6px; }
   .site-nav { margin-top: 2px; }
   .nav-link { padding: 8px 10px; }
-  .auth-wrap { margin-top: 28px; }
+  .auth-stage { width: min(100% - 28px, 560px); padding: 24px 0 36px; }
+  .auth-panel { padding: 1.25rem !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }

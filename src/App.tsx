@@ -1177,10 +1177,17 @@ export default function App(){
   if(!user)return(
     <div className="app-shell" data-theme={theme}>
       <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
-      <div className="auth-wrap">
-        <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Learn. Practice. Build.</h1></div>
+      <main className="auth-stage">
+        <aside className="auth-art auth-bear-art" aria-hidden="true">
+          <div className="auth-bear-orbit"><img src={LOGO_URL} alt="" onError={(e:any)=>e.target.style.display="none"}/></div>
+          <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
+          <span className="auth-art-spark auth-spark-one">✳</span>
+          <span className="auth-art-spark auth-spark-two">＋</span>
+        </aside>
+        <div className="auth-wrap">
+          <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Learn. Practice. Build.</h1></div>
         {!showReg?(
-          <div style={cardS}>
+          <div className="auth-panel" style={{...cardS,padding:"1.6rem 1.75rem"}}>
             <h2 style={{fontSize:17,fontWeight:600,marginTop:0,marginBottom:16}}>Sign in</h2>
             <label style={lbl}>Username</label>
             <input style={{...inp,marginBottom:12}} value={loginForm.username} onChange={(e:any)=>setLoginForm((f:any)=>({...f,username:e.target.value}))} placeholder="Username"/>
@@ -1196,7 +1203,7 @@ export default function App(){
             <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:8}}>No account? <span style={{color:C.orangeText,cursor:"pointer"}} onClick={()=>setShowReg(true)}>Register</span></p>
           </div>
         ):(
-          <div style={cardS}>
+          <div className="auth-panel" style={{...cardS,padding:"1.6rem 1.75rem"}}>
             <h2 style={{fontSize:17,fontWeight:600,marginTop:0,marginBottom:16}}>Create account</h2>
             <label style={lbl}>Full name</label>
             <input style={{...inp,marginBottom:12}} value={regForm.name} onChange={(e:any)=>setRegForm((f:any)=>({...f,name:e.target.value}))} placeholder="Your name"/>
@@ -1209,7 +1216,17 @@ export default function App(){
             <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:12}}><span style={{color:C.orangeText,cursor:"pointer"}} onClick={()=>setShowReg(false)}>Back to sign in</span></p>
           </div>
         )}
-      </div>
+        </div>
+        <aside className="auth-art auth-code-art" aria-hidden="true">
+          <div className="auth-code-card">
+            <div className="auth-code-top"><span className="auth-code-dots"><i/><i/><i/></span><span>python.py</span></div>
+            <pre><code><span className="code-purple">def</span> <span className="code-blue">solve</span>(problem):<br/>  <span className="code-purple">for</span> idea <span className="code-purple">in</span> practice:<br/>    <span className="code-purple">if</span> idea.<span className="code-blue">works</span>():<br/>      <span className="code-purple">return</span> <span className="code-green">"success"</span><br/>  <span className="code-purple">return</span> <span className="code-green">"keep learning"</span></code></pre>
+            <span className="auth-code-prompt">&gt; build something brilliant<span className="auth-cursor">_</span></span>
+          </div>
+          <span className="auth-art-caption">LEARN · PRACTICE · BUILD</span>
+          <span className="auth-art-spark auth-spark-three">{ }</span>
+        </aside>
+      </main>
       <BugReportBtn user={null}/>
     </div>
   );
@@ -2571,7 +2588,36 @@ function UILTestRunner({test,username,onBack}:any){
   };
   const updateOtherAnswer=(n:number,value:string)=>updateAnswer(n,value.toUpperCase().replace(/[^F-K]/g,"").slice(0,1));
   const toggleFlag=(n:number)=>setAttempt((a:any)=>({...a,flags:{...(a.flags||{}),[n]:!a.flags?.[n]}}));
-  const updateSelfScore=(field:string,value:string)=>setAttempt((a:any)=>({...a,selfScore:{...(a.selfScore||{}),[field]:value}}));
+  const normalizeScoreResponse=(value:any)=>{
+    let normalized=String(value??"").trim().toUpperCase().replace(/^(?:O|BIG\s*O)\((.*)\)$/,"$1").replace(/[\s,;]/g,"");
+    while(normalized.startsWith("(")&&normalized.endsWith(")")){
+      let depth=0,wrapsWholeValue=true;
+      for(let i=0;i<normalized.length;i++){
+        if(normalized[i]==="(")depth++;
+        if(normalized[i]===")")depth--;
+        if(depth===0&&i<normalized.length-1){wrapsWholeValue=false;break;}
+      }
+      if(!wrapsWholeValue)break;
+      normalized=normalized.slice(1,-1);
+    }
+    return normalized;
+  };
+  const gradeAttempt=()=>{
+    let correct=0,incorrect=0,unanswered=0;
+    const details:Array<{question:number,response:string,expected:string,correct:boolean,answered:boolean}> = [];
+    for(let n=1;n<=test.questions;n++){
+      const response=modeFor(n)==="choice"?attempt.answers?.[n]:attempt.written?.[n];
+      const expected=String(test.answerKey?.[n-1]||"");
+      const answered=!!String(response??"").trim();
+      const matches=answered&&expected.split("||").some((answer:string)=>normalizeScoreResponse(response)===normalizeScoreResponse(answer));
+      if(!answered)unanswered++;
+      else if(matches)correct++;
+      else incorrect++;
+      details.push({question:n,response:String(response??""),expected,correct:!!matches,answered});
+    }
+    return{correct,incorrect,unanswered,points:correct*test.pointsCorrect-incorrect*test.penaltyIncorrect,details};
+  };
+  const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
   const submit=()=>{
     if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;
     setAttempt((a:any)=>({...a,submittedAt:Date.now()}));
@@ -2609,6 +2655,7 @@ function UILTestRunner({test,username,onBack}:any){
             {Array.from({length:test.questions},(_,i)=>i+1).map(n=>(
               <div key={n} id={`uil-q-${test.id}-${n}`} className="uil-answer-row">
                 <strong style={{width:25,flexShrink:0,fontSize:13}}>{n}.</strong>
+                {result&&<span aria-label={result.details[n-1].correct?"Correct":result.details[n-1].answered?"Incorrect":"Unanswered"} title={result.details[n-1].expected?`Correct answer: ${result.details[n-1].expected}`:""} style={{width:14,flexShrink:0,fontSize:12,fontWeight:800,color:result.details[n-1].correct?C.green:result.details[n-1].answered?C.red:C.muted}}>{result.details[n-1].correct?"✓":result.details[n-1].answered?"×":"–"}</span>}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,flexWrap:"wrap"}}>
                     {modeFor(n)==="choice"&&!isOtherChoice(n)?(
@@ -2629,26 +2676,12 @@ function UILTestRunner({test,username,onBack}:any){
             ))}
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
-            {!attempt.submittedAt?<Btn onClick={submit}>Submit responses</Btn>:<div role="status" style={{alignSelf:"center",fontSize:13,color:C.green,fontWeight:700}}>Responses saved. Compare with the key in the official packet.</div>}
+            {!attempt.submittedAt?<Btn onClick={submit}>Submit responses</Btn>:<div role="status" style={{alignSelf:"center",fontSize:13,color:C.green,fontWeight:700}}>Submitted · score calculated automatically</div>}
             <SecBtn onClick={reset}>New attempt</SecBtn>
           </div>
-          {attempt.submittedAt&&(()=>{
-            const correct=Number(attempt.selfScore?.correct);
-            const incorrect=Number(attempt.selfScore?.incorrect);
-            const valid=attempt.selfScore?.correct!==undefined&&attempt.selfScore?.correct!==""&&attempt.selfScore?.incorrect!==undefined&&attempt.selfScore?.incorrect!==""&&Number.isInteger(correct)&&Number.isInteger(incorrect)&&correct>=0&&incorrect>=0&&correct+incorrect<=answered;
-            const unanswered=valid?test.questions-correct-incorrect:null;
-            return(
-              <div style={{marginTop:14,padding:12,borderRadius:10,border:`1px solid ${C.border}`,background:C.bgInput}}>
-                <strong style={{fontSize:13}}>Score your attempt</strong>
-                <div style={{fontSize:12,color:C.muted,margin:"4px 0 10px"}}>Check the official key and explanations in the packet, then enter your totals. Review accepted written answers carefully.</div>
-                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
-                  {["correct","incorrect"].map(field=><label key={field} style={{fontSize:12,color:C.muted,fontWeight:700,textTransform:"capitalize"}}>{field}<input type="number" min="0" max={test.questions} value={attempt.selfScore?.[field]??""} onChange={(e:any)=>updateSelfScore(field,e.target.value)} style={{display:"block",width:100,marginTop:4,padding:"7px 8px",border:`1px solid ${C.border}`,borderRadius:7,background:C.bgCard,color:C.text}}/></label>)}
-                  {valid&&<div style={{fontSize:13,color:C.text}}>{unanswered} unanswered · <strong style={{fontSize:18,color:C.orangeText}}>{correct*test.pointsCorrect-incorrect*test.penaltyIncorrect} points</strong></div>}
-                </div>
-                {!valid&&attempt.selfScore?.correct!==undefined&&attempt.selfScore?.incorrect!==undefined&&attempt.selfScore?.correct!==""&&attempt.selfScore?.incorrect!==""&&<div style={{fontSize:12,color:C.red,marginTop:8}}>Enter whole-number totals that add up to no more than your {answered} answered questions.</div>}
-              </div>
-            );
-          })()}
+          {attempt.submittedAt&&result&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginTop:14}}>
+            {[["Score",`${result.points} pts`,C.orangeText],["Correct",result.correct,C.green],["Incorrect",result.incorrect,C.red],["Unanswered",result.unanswered,C.muted]].map(([label,value,color]:any)=><div key={label} style={{padding:"11px 12px",borderRadius:10,border:`1px solid ${C.border}`,background:C.bgInput}}><div style={{fontSize:11,color:C.muted,fontWeight:700}}>{label}</div><strong style={{display:"block",marginTop:3,fontSize:20,color}}>{value}</strong></div>)}
+          </div>}
         </div>
       </div>
     </div>
