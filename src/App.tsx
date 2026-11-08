@@ -62,6 +62,13 @@ async function hashPassword(pw:string):Promise<string>{
   const buf = await crypto.subtle.digest("SHA-256", enc);
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
+function showOnFirstVisit(key:string):boolean{
+  try{
+    if(localStorage.getItem(key)==="1")return false;
+    localStorage.setItem(key,"1");
+    return true;
+  }catch{return true;}
+}
 const DEV_ACCOUNT: any = { username:"LuisBlanco62",passwordHash:"d76b58cc21175bccfb07399a4531e3a0141dce781c16f4e96ed05e29c5452d5f",role:"developer",name:"Luis Blanco" };
 const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
 const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDfiOI_400x400.jpg";
@@ -1027,6 +1034,10 @@ export default function App(){
   const [theme,setTheme]=useState<"light"|"dark">(()=>{
     try{return localStorage.getItem("bridgeland-cs-club-theme")==="dark"?"dark":"light";}catch{return "light";}
   });
+  const [showWelcome,setShowWelcome]=useState(false);
+  const [showUnitsHint,setShowUnitsHint]=useState(false);
+  const welcomeVisitKey=useRef<string|null>(null);
+  const unitsHintVisitKey=useRef<string|null>(null);
   const [loginForm,setLoginForm]=useState({username:"",password:""});
   const [loginErr,setLoginErr]=useState("");
   const [regForm,setRegForm]=useState({username:"",password:"",name:""});
@@ -1101,6 +1112,28 @@ export default function App(){
   const myCompleted=user&&!isGuest?((data.completions||{})[user.username]||[]):[];
   const nextMeeting=getNextClubMeeting();
   const nextMeetingDate=nextMeeting.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+
+  useEffect(()=>{
+    if(!user?.username||page!=="home"){
+      setShowWelcome(false);
+      return;
+    }
+    const key=`bridgeland-cs-club:welcome-seen:${user.username}`;
+    if(welcomeVisitKey.current===key)return;
+    welcomeVisitKey.current=key;
+    setShowWelcome(showOnFirstVisit(key));
+  },[page,user?.username]);
+
+  useEffect(()=>{
+    if(!user?.username||isGuest||page!=="problems"){
+      setShowUnitsHint(false);
+      return;
+    }
+    const key=`bridgeland-cs-club:units-hint-seen:${user.username}`;
+    if(unitsHintVisitKey.current===key)return;
+    unitsHintVisitKey.current=key;
+    setShowUnitsHint(showOnFirstVisit(key));
+  },[page,user?.username,isGuest]);
 
   useEffect(()=>{
     if(isOfficer)maybeAutoBackup(user.username);
@@ -1241,7 +1274,7 @@ export default function App(){
             <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
               <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover",flexShrink:0}} onError={(e:any)=>e.target.style.display="none"}/>
               <div>
-                <h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
+                {showWelcome&&<h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>}
                 <p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
                 <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
                   <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Next meeting · {nextMeetingDate} · 2:40–3:50 PM</span>
@@ -1384,7 +1417,7 @@ export default function App(){
               <>
                 <input style={{...inp,marginBottom:16}} value={problemSearch} onChange={(e:any)=>setProblemSearch(e.target.value)} placeholder="🔍 Search units and problems by title..."/>
                 {!problemSearch&&<>
-                  <div style={{background:C.orange18,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>Units group problems together. Start a unit to go through them back-to-back.</div>
+                  {showUnitsHint&&<div style={{background:C.orange18,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>Units group problems together. Start a unit to go through them back-to-back.</div>}
                   {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
                   {(data.units||[]).map((unit:any)=>{
                     const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
