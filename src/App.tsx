@@ -67,9 +67,16 @@ const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
 const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDfiOI_400x400.jpg";
 
 const C = {
-  bg:"#0f1117",bgCard:"#1a1d27",bgInput:"#12141c",border:"#2a2d3a",
-  navy:"#1a3a6b",orange:"#f97316",text:"#e2e8f0",muted:"#94a3b8",
-  green:"#22c55e",red:"#ef4444",blue:"#3b82f6",guest:"#64748b",purple:"#a855f7",
+  bg:"var(--canvas)",bgCard:"var(--surface)",bgInput:"var(--surface-strong)",border:"var(--line)",
+  navy:"var(--navy)",orange:"var(--orange)",orangeText:"var(--orange-text)",text:"var(--text)",muted:"var(--muted)",
+  green:"var(--green)",red:"var(--red)",blue:"var(--blue)",guest:"var(--guest)",purple:"var(--purple)",
+  navy99:"var(--navy-60)",navycc:"var(--navy-78)",bg88:"var(--canvas-88)",
+  green15:"var(--green-15)",green18:"var(--green-18)",green22:"var(--green-22)",
+  green33:"var(--green-33)",green44:"var(--green-44)",red33:"var(--red-33)",red44:"var(--red-44)",
+  muted22:"var(--muted-22)",orange14:"var(--orange-14)",orange15:"var(--orange-15)",
+  orange18:"var(--orange-18)",orange1f:"var(--orange-12)",orange22:"var(--orange-22)",
+  orange28:"var(--orange-28)",orange33:"var(--orange-33)",orange44:"var(--orange-44)",orange66:"var(--orange-66)",
+  red15:"var(--red-15)",red18:"var(--red-18)",red22:"var(--red-22)",
 };
 const diffColor: any = { Easy:C.green,Medium:C.orange,Hard:C.red };
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -173,7 +180,7 @@ function DatePicker({value,onChange}:any){
         {Array(fd).fill(null).map((_,i)=><div key={"e"+i}/>)}
         {Array(dim).fill(null).map((_,i)=>{
           const d=i+1,sel=sd===d&&sm===vm&&sy===vy,isT=d===today.getDate()&&vm===today.getMonth()&&vy===today.getFullYear();
-          return <button key={d} type="button" onClick={()=>pick(d)} style={{background:sel?C.orange:isT?`${C.orange}22`:"transparent",color:sel?"#fff":isT?C.orange:C.text,border:sel?`1px solid ${C.orange}`:`1px solid transparent`,borderRadius:6,padding:"5px 0",fontSize:13,cursor:"pointer",fontWeight:sel?700:400}}>{d}</button>;
+          return <button key={d} type="button" onClick={()=>pick(d)} style={{background:sel?C.orange:isT?C.orange22:"transparent",color:sel?"var(--accent-ink)":isT?C.orangeText:C.text,border:sel?`1px solid ${C.orange}`:`1px solid transparent`,borderRadius:6,padding:"5px 0",fontSize:13,cursor:"pointer",fontWeight:sel?700:400}}>{d}</button>;
         })}
       </div>
     </div>
@@ -547,11 +554,11 @@ function ImgPick({label="Add image (optional)",onPick,preview}:any){
   );
 }
 
-const inp:any={background:C.bgInput,border:`1px solid ${C.border}`,color:C.text,padding:"8px 12px",borderRadius:6,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"'Inter','Segoe UI',sans-serif"};
+const inp:any={background:C.bgInput,border:`1px solid ${C.border}`,color:C.text,padding:"8px 12px",borderRadius:6,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"'DM Sans','Segoe UI',sans-serif"};
 const lbl:any={fontSize:12,color:C.muted,marginBottom:4,display:"block"};
 const cardS:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem 1.25rem",marginBottom:12};
 const Btn=({color=C.orange,children,onClick,style={},disabled}:any)=>(
-  <button onClick={onClick} disabled={disabled} style={{background:disabled?C.border:color,color:"#fff",border:"none",padding:"8px 16px",borderRadius:6,cursor:disabled?"not-allowed":"pointer",fontSize:13,fontWeight:600,...style}}>{children}</button>
+  <button onClick={onClick} disabled={disabled} style={{background:disabled?C.border:color,color:color===C.orange?"var(--accent-ink)":"#fff",border:"none",padding:"8px 16px",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontSize:13,fontWeight:700,...style}}>{children}</button>
 );
 const OutBtn=({children,onClick,style={},danger}:any)=>(
   <button onClick={onClick} style={{background:"transparent",color:danger?C.red:C.muted,border:`1px solid ${danger?C.red:C.border}`,padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:13,...style}}>{children}</button>
@@ -559,7 +566,7 @@ const OutBtn=({children,onClick,style={},danger}:any)=>(
 const SecBtn=({children,onClick,style={}}:any)=>(
   <button onClick={onClick} style={{background:C.bgInput,color:C.text,border:`1px solid ${C.border}`,padding:"8px 16px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,...style}}>{children}</button>
 );
-const Tag=({c,children}:any)=><span style={{background:`${c}22`,color:c,fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{children}</span>;
+const Tag=({c,children}:any)=><span style={{background:`color-mix(in srgb, ${c} 16%, transparent)`,color:c===C.orange?C.orangeText:c,fontSize:11,padding:"4px 9px",borderRadius:7,fontWeight:700}}>{children}</span>;
 
 function NotificationBell({user}:any){
   const [notifs,setNotifs]=useState<any[]>([]);
@@ -594,23 +601,23 @@ function NotificationBell({user}:any){
   };
   return(
     <div style={{position:"relative"}}>
-      <button onClick={()=>setOpen(o=>!o)} style={{background:"transparent",border:"none",cursor:"pointer",position:"relative",padding:"6px 4px",fontSize:19,color:"#cdd5e0",display:"flex",alignItems:"center"}} aria-label="Notifications">
+      <button onClick={()=>setOpen(o=>!o)} style={{background:"transparent",border:"none",cursor:"pointer",position:"relative",padding:"6px 4px",fontSize:19,color:C.muted,display:"flex",alignItems:"center"}} aria-label="Notifications">
         🔔
         {unread.length>0&&<span style={{position:"absolute",top:0,right:0,background:C.red,color:"#fff",fontSize:10,fontWeight:700,borderRadius:"50%",minWidth:15,height:15,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{unread.length>9?"9+":unread.length}</span>}
       </button>
       {open&&(
         <>
           <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setOpen(false)}/>
-          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:400,overflowY:"auto",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.5)",zIndex:999}}>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:400,overflowY:"auto",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,boxShadow:"var(--shadow)",zIndex:999}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${C.border}`}}>
               <span style={{fontWeight:700,fontSize:13,color:C.text}}>Notifications</span>
-              {unread.length>0&&<button onClick={markAllRead} style={{background:"transparent",border:"none",color:C.orange,fontSize:11,cursor:"pointer",fontWeight:600}}>Mark all read</button>}
+              {unread.length>0&&<button onClick={markAllRead} style={{background:"transparent",border:"none",color:C.orangeText,fontSize:11,cursor:"pointer",fontWeight:600}}>Mark all read</button>}
             </div>
             {relevant.length===0&&<div style={{padding:"20px 14px",color:C.muted,fontSize:13,textAlign:"center"}}>No notifications yet.</div>}
             {relevant.slice(0,20).map((n:any)=>{
               const isUnread=!(n.readBy||[]).includes(user.username);
               return(
-                <div key={n.id} onClick={()=>markRead(n)} style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,cursor:"pointer",background:isUnread?`${C.orange}14`:"transparent"}}>
+                <div key={n.id} onClick={()=>markRead(n)} style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,cursor:"pointer",background:isUnread?C.orange14:"transparent"}}>
                   <div style={{display:"flex",gap:6,alignItems:"flex-start"}}>
                     {isUnread&&<span style={{width:7,height:7,borderRadius:"50%",background:C.orange,marginTop:5,flexShrink:0}}/>}
                     <div style={{flex:1}}>
@@ -629,24 +636,30 @@ function NotificationBell({user}:any){
   );
 }
 
-function Header({user,onSignOut,onManage,isDev}:any){
+function Header({user,onSignOut,onManage,isDev,page,navItems,navLabels,onNavigate,onHome,theme,onToggleTheme}:any){
   return(
-    <div style={{background:C.navy,borderBottom:`3px solid ${C.orange}`,padding:"0 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between",height:60}}>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <img src={LOGO_URL} alt="logo" style={{width:38,height:38,borderRadius:"50%",border:`2px solid ${C.orange}`,objectFit:"cover"}} onError={(e:any)=>e.target.style.display="none"}/>
-        <span style={{fontFamily:"'Georgia',serif",fontWeight:400,fontSize:20,color:"#fff",letterSpacing:1}}>Bridgeland CS Club</span>
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
+    <header className="site-header">
+      <button type="button" className="brand-link" onClick={onHome} aria-label="Bridgeland CS Club home">
+        <img src={LOGO_URL} alt="" className="brand-logo" onError={(e:any)=>e.target.style.display="none"}/>
+        <span>Bridgeland CS Club</span>
+      </button>
+      {user&&<nav className="site-nav" aria-label="Main navigation">
+        {navItems.map((p:string)=><button key={p} className={`nav-link${page===p?" active":""}`} aria-current={page===p?"page":undefined} onClick={()=>onNavigate(p)}>{navLabels[p]}</button>)}
+      </nav>}
+      <div className="header-actions">
+        <button type="button" className="theme-toggle" onClick={onToggleTheme} aria-label={`Switch to ${theme==="light"?"dark":"light"} mode`} title={`Switch to ${theme==="light"?"dark":"light"} mode`}>
+          <span aria-hidden="true">{theme==="light"?"☾":"☀"}</span><span className="theme-label">{theme==="light"?"Dark":"Light"}</span>
+        </button>
         {user&&<>
           <NotificationBell user={user}/>
-          <span style={{fontSize:13,color:"#cdd5e0"}}>{user.name||user.username}</span>
+          <span className="header-user">{user.name||user.username}</span>
           {user.role!=="member"&&user.role!=="guest"&&<Tag c={C.orange}>{user.role==="developer"?"Developer":"Officer"}</Tag>}
           {user.role==="guest"&&<Tag c={C.guest}>guest</Tag>}
-          {isDev&&<Btn color={C.orange} onClick={onManage} style={{padding:"5px 12px",fontSize:12}}>Members</Btn>}
+          {isDev&&<Btn color={C.orange} onClick={onManage} style={{padding:"7px 12px",fontSize:12}}>Members</Btn>}
+          <OutBtn onClick={onSignOut}>{"Sign out"}</OutBtn>
         </>}
-        <OutBtn onClick={onSignOut} style={{borderColor:"#ffffff33",color:"#cdd5e0"}}>{user?"Sign out":""}</OutBtn>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -725,7 +738,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
       {showNew&&(
         <div style={{...cardS,marginBottom:16,borderLeft:`3px solid ${C.orange}`}}>
           <h3 style={{margin:"0 0 12px",fontSize:15}}>New discussion thread</h3>
-          {formErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {formErr}</div>}
+          {formErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {formErr}</div>}
           <label style={lbl}>Title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10}} value={newTitle} onChange={(e:any)=>setNewTitle(e.target.value)} placeholder="What do you want to discuss?" autoFocus/>
           <label style={lbl}>Body <span style={{color:C.red}}>*</span></label>
@@ -759,7 +772,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
                   <div style={{fontSize:13,color:C.muted,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{t.body}</div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontWeight:700,color:C.orange,fontSize:18}}>{t.replyCount||0}</div>
+                  <div style={{fontWeight:700,color:C.orangeText,fontSize:18}}>{t.replyCount||0}</div>
                   <div style={{fontSize:11,color:C.muted}}>replies</div>
                 </div>
               </div>
@@ -768,7 +781,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
                 <span style={{fontSize:11,color:C.muted}}>·</span>
                 <span style={{fontSize:11,color:C.muted}}>{new Date(t.createdAt).toLocaleDateString()}</span>
                 <div style={{marginLeft:"auto",display:"flex",gap:6}} onClick={(e:any)=>e.stopPropagation()}>
-                  {(user?.username===t.username)&&<button onClick={(e:any)=>startEditThread(t,e)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
+                  {(user?.username===t.username)&&<button onClick={(e:any)=>startEditThread(t,e)} style={{background:"transparent",border:"none",color:C.orangeText,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
                   {(user?.username===t.username||isOfficer)&&<button onClick={(e:any)=>deleteThread(t.id,e)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Delete</button>}
                 </div>
               </div>
@@ -857,14 +870,14 @@ function ThreadView({thread,user,onBack,isOfficer}:any){
       {replies.map((r:any,i:number)=>(
         <div key={r.id} style={{...cardS,borderLeft:`3px solid ${C.border}`}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-            <div style={{width:28,height:28,borderRadius:"50%",background:`${C.orange}33`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:C.orange,flexShrink:0}}>{(r.author||"?")[0].toUpperCase()}</div>
+            <div style={{width:28,height:28,borderRadius:"50%",background:C.orange33,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:C.orangeText,flexShrink:0}}>{(r.author||"?")[0].toUpperCase()}</div>
             <span style={{fontWeight:600,fontSize:13}}>{r.author}</span>
             <span style={{fontSize:11,color:C.muted}}>·</span>
             <span style={{fontSize:11,color:C.muted}}>{new Date(r.createdAt).toLocaleDateString()}</span>
             <span style={{fontSize:11,color:C.muted}}>#{i+1}</span>
             {r.edited&&<span style={{fontSize:10,color:C.muted}}>(edited)</span>}
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-              {user?.username===r.username&&editingReply!==r.id&&<button onClick={()=>startEditReply(r)} style={{background:"transparent",border:"none",color:C.orange,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
+              {user?.username===r.username&&editingReply!==r.id&&<button onClick={()=>startEditReply(r)} style={{background:"transparent",border:"none",color:C.orangeText,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Edit</button>}
               {(user?.username===r.username||isOfficer)&&<button onClick={()=>deleteReply(r.id)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:12,padding:"2px 6px"}}>Delete</button>}
             </div>
           </div>
@@ -884,7 +897,7 @@ function ThreadView({thread,user,onBack,isOfficer}:any){
       {!isGuest?(
         <div style={{...cardS,marginTop:8}}>
           <label style={lbl}>Add a reply</label>
-          {replyErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"6px 10px",fontSize:13,color:C.red,marginBottom:8}}>⚠ {replyErr}</div>}
+          {replyErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"6px 10px",fontSize:13,color:C.red,marginBottom:8}}>⚠ {replyErr}</div>}
           <textarea style={{...inp,height:90,resize:"vertical",marginBottom:10}} value={newReply} onChange={(e:any)=>setNewReply(e.target.value)} placeholder="Share your thoughts..." onKeyDown={(e:any)=>{if(e.key==="Enter"&&e.ctrlKey)postReply();}}/>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:11,color:C.muted}}>Ctrl+Enter to submit</span>
@@ -930,11 +943,11 @@ function BugReportBtn({user}:any){
 
   return(
     <>
-      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:6}}>
+      <button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:24,right:24,zIndex:500,background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,borderRadius:12,padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:600,boxShadow:"var(--shadow)",display:"flex",alignItems:"center",gap:6}}>
         Report a bug
       </button>
       {open&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
+        <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
           <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
             <h3 style={{margin:"0 0 8px",fontSize:16}}>Report a Bug</h3>
             <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Describe what went wrong and we'll look into it.</p>
@@ -1003,6 +1016,9 @@ export default function App(){
   const [loading,setLoading]=useState(true);
   const [user,setUser]=useState<any>(null);
   const [page,setPage]=useState("home");
+  const [theme,setTheme]=useState<"light"|"dark">(()=>{
+    try{return localStorage.getItem("bridgeland-cs-club-theme")==="dark"?"dark":"light";}catch{return "light";}
+  });
   const [loginForm,setLoginForm]=useState({username:"",password:""});
   const [loginErr,setLoginErr]=useState("");
   const [regForm,setRegForm]=useState({username:"",password:"",name:""});
@@ -1015,6 +1031,11 @@ export default function App(){
   const [activeCoding,setActiveCoding]=useState<any>(null);
   const [problemSearch,setProblemSearch]=useState("");
   const [dismissedAnnId,setDismissedAnnId]=useState<any>(null);
+
+  useEffect(()=>{
+    document.documentElement.dataset.theme=theme;
+    try{localStorage.setItem("bridgeland-cs-club-theme",theme);}catch{/* Theme still works for this session. */}
+  },[theme]);
 
   const data:any={
     problems,codingQuestions,units,codingUnits,announcements,events,users:usersList,
@@ -1109,23 +1130,24 @@ export default function App(){
   const allNav=["home","about","announcements","events","resources","problems","coding","leaderboard","forum"];
   const navItems=isOfficer?[...allNav,"officers"]:allNav;
   const navLabels:any={home:"Home",about:"About Us",announcements:"Announcements",events:"Events",resources:"Resources",problems:"Problems",coding:"Coding",leaderboard:"Leaderboard",forum:"Forum",officers:"Officers"};
-  const navBtn=(active:boolean)=>({background:active?`${C.orange}28`:"transparent",color:active?C.orange:C.muted,border:"none",padding:"8px 14px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:active?700:400,whiteSpace:"nowrap" as const});
+  const clearActiveView=()=>{setActiveCoding(null);setActiveCodingUnit(null);setActiveProblem(null);setActiveUnit(null);};
+  const goHome=()=>{setPage("home");clearActiveView();};
+  const navigateTo=(nextPage:string)=>{setPage(nextPage);clearActiveView();};
+  const headerProps={user,onSignOut:()=>{setUser(null);setPage("home");clearActiveView();},isDev,onManage:()=>navigateTo("members"),page,navItems,navLabels,onNavigate:navigateTo,onHome:goHome,theme,onToggleTheme:()=>setTheme(t=>t==="light"?"dark":"light")};
+  const withHeader=(content:any)=><div className="app-shell" data-theme={theme}><Header {...headerProps}/>{content}</div>;
 
   if(loading)return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover"}} onError={(e:any)=>e.target.style.display="none"}/>
       <div style={{color:C.muted,fontSize:15}}>Loading Bridgeland CS Club…</div>
     </div>
   );
 
   if(!user)return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <div style={{background:`linear-gradient(135deg,${C.navy} 0%,#0f1117 70%)`,padding:"3rem 1rem 2.5rem",textAlign:"center",borderBottom:`3px solid ${C.orange}`}}>
-        <img src={LOGO_URL} alt="logo" style={{width:80,height:80,borderRadius:"50%",border:`3px solid ${C.orange}`,marginBottom:14,objectFit:"cover"}} onError={(e:any)=>e.target.style.display="none"}/>
-        <h1 style={{fontFamily:"'Georgia',serif",fontSize:28,fontWeight:400,margin:0,letterSpacing:1,color:"#fff",textAlign:"center"}}>Bridgeland CS Club</h1>
-        <p style={{color:C.muted,fontSize:14,marginTop:8}}>Bridgeland High School · Cypress, TX</p>
-      </div>
-      <div style={{maxWidth:380,margin:"0 auto",padding:"2rem 1rem"}}>
+    <div className="app-shell" data-theme={theme}>
+      <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
+      <div className="auth-wrap">
+        <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Make something brilliant.</h1><p>Learn, build, and solve problems with the Bridgeland CS community.</p></div>
         {!showReg?(
           <div style={cardS}>
             <h2 style={{fontSize:17,fontWeight:600,marginTop:0,marginBottom:16}}>Sign in</h2>
@@ -1138,9 +1160,9 @@ export default function App(){
             <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0"}}>
               <div style={{flex:1,height:1,background:C.border}}/><span style={{fontSize:12,color:C.muted}}>or</span><div style={{flex:1,height:1,background:C.border}}/>
             </div>
-            <button onClick={()=>setUser(GUEST_USER)} style={{width:"100%",padding:"10px",background:C.bgInput,border:`1px solid ${C.border}`,color:C.muted,borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'Inter','Segoe UI',sans-serif"}}>Continue as Guest</button>
+            <button onClick={()=>setUser(GUEST_USER)} style={{width:"100%",padding:"10px",background:C.bgInput,border:`1px solid ${C.border}`,color:C.muted,borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>Continue as Guest</button>
             <p style={{textAlign:"center",fontSize:12,color:C.muted,marginTop:8}}>Guests can browse but cannot do problems or appear on the leaderboard.</p>
-            <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:8}}>No account? <span style={{color:C.orange,cursor:"pointer"}} onClick={()=>setShowReg(true)}>Register</span></p>
+            <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:8}}>No account? <span style={{color:C.orangeText,cursor:"pointer"}} onClick={()=>setShowReg(true)}>Register</span></p>
           </div>
         ):(
           <div style={cardS}>
@@ -1153,7 +1175,7 @@ export default function App(){
             <input style={{...inp,marginBottom:16}} type="password" value={regForm.password} onChange={(e:any)=>setRegForm((f:any)=>({...f,password:e.target.value}))} placeholder="At least 8 characters"/>
             {regErr&&<p style={{color:C.red,fontSize:13,margin:"0 0 12px"}}>{regErr}</p>}
             <Btn style={{width:"100%",padding:"10px"}} onClick={register}>Create account</Btn>
-            <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:12}}><span style={{color:C.orange,cursor:"pointer"}} onClick={()=>setShowReg(false)}>Back to sign in</span></p>
+            <p style={{textAlign:"center",fontSize:13,color:C.muted,marginTop:12}}><span style={{color:C.orangeText,cursor:"pointer"}} onClick={()=>setShowReg(false)}>Back to sign in</span></p>
           </div>
         )}
       </div>
@@ -1163,59 +1185,56 @@ export default function App(){
 
   if(activeCoding!==null){
     const cq=(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(activeCoding));
-    if(!cq){ return <div style={{padding:'2rem',color:C.muted}}>Question not found. <button onClick={()=>setActiveCoding(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
-    return <CodingView cq={cq} user={user} data={data} upd={upd} onBack={()=>setActiveCoding(null)}/>;
+    if(!cq){ return withHeader(<div style={{padding:'2rem',color:C.muted}}>Question not found. <button onClick={()=>setActiveCoding(null)} style={{color:C.orangeText,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>); }
+    return <CodingView cq={cq} user={user} data={data} upd={upd} onBack={()=>setActiveCoding(null)} headerProps={headerProps}/>;
   }
   if(activeCodingUnit!==null){
     const cu=(data.codingUnits||[]).find((u:any)=>String(u.id)===String(activeCodingUnit));
-    if(!cu){ return <div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveCodingUnit(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
-    return <CodingUnitView unit={cu} data={data} user={user} onBack={()=>setActiveCodingUnit(null)} onQuestion={(id:any)=>setActiveCoding(id)}/>;
+    if(!cu){ return withHeader(<div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveCodingUnit(null)} style={{color:C.orangeText,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>); }
+    return <CodingUnitView unit={cu} data={data} user={user} onBack={()=>setActiveCodingUnit(null)} onQuestion={(id:any)=>setActiveCoding(id)} headerProps={headerProps}/>;
   }
   if(activeProblem!==null){
     const prob=data.problems.find((p:any)=>String(p.id)===String(activeProblem.id));
-    if(!prob){ return <div style={{padding:'2rem',color:C.muted}}>Problem not found. <button onClick={()=>setActiveProblem(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
-    return <ProblemView key={prob.id} prob={prob} user={user} data={data} upd={upd} onBack={()=>setActiveProblem(null)} unitCtx={activeProblem.unitCtx} onNext={activeProblem.onNext}/>;
+    if(!prob){ return withHeader(<div style={{padding:'2rem',color:C.muted}}>Problem not found. <button onClick={()=>setActiveProblem(null)} style={{color:C.orangeText,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>); }
+    return <ProblemView key={prob.id} prob={prob} user={user} data={data} upd={upd} onBack={()=>setActiveProblem(null)} unitCtx={activeProblem.unitCtx} onNext={activeProblem.onNext} headerProps={headerProps}/>;
   }
   if(activeUnit!==null){
     const unit=data.units.find((u:any)=>u.id===activeUnit);
-    if(!unit){ return <div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveUnit(null)} style={{color:C.orange,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>; }
-    return <UnitView unit={unit} data={data} user={user} upd={upd} onBack={()=>setActiveUnit(null)}
+    if(!unit){ return withHeader(<div style={{padding:'2rem',color:C.muted}}>Unit not found. <button onClick={()=>setActiveUnit(null)} style={{color:C.orangeText,background:'none',border:'none',cursor:'pointer'}}>Go back</button></div>); }
+    return <UnitView unit={unit} data={data} user={user} upd={upd} onBack={()=>setActiveUnit(null)} headerProps={headerProps}
       onFinish={()=>{setActiveProblem(null);setActiveUnit(null);}}
       onProblem={(pid:any,ctx:any)=>setActiveProblem({id:pid,unitCtx:ctx,onNext:ctx.onNext})}/>;
   }
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <Header user={user} onSignOut={()=>{setUser(null);setPage("home");}} isDev={isDev} onManage={()=>setPage("members")}/>
-      <div style={{background:"#111827",borderBottom:`1px solid ${C.border}`,padding:"0 1rem",display:"flex",gap:2,overflowX:"auto"}}>
-        {navItems.map(p=><button key={p} style={navBtn(page===p)} onClick={()=>setPage(p)}>{navLabels[p]}</button>)}
-      </div>
+    <div className="app-shell" data-theme={theme}>
+      <Header {...headerProps}/>
       {(()=>{
         const pinned=(data.announcements||[]).find((a:any)=>String(a.id)===String(data.pinnedAnnouncementId));
         if(!pinned||dismissedAnnId===pinned.id||page==="announcements")return null;
         const latest=pinned;
         return(
-          <div style={{background:`${C.orange}1f`,borderBottom:`1px solid ${C.orange}44`,padding:"10px 1rem",display:"flex",alignItems:"center",gap:12}}>
+          <div style={{background:C.orange1f,borderBottom:`1px solid ${C.orange44}`,padding:"10px 1rem",display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:16,flexShrink:0}}>📣</span>
             <div style={{flex:1,fontSize:13,color:C.text,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               <strong>{latest.title}</strong><span style={{color:C.muted}}> — {latest.body}</span>
             </div>
-            <button onClick={()=>setPage("announcements")} style={{background:"transparent",border:`1px solid ${C.orange}66`,color:C.orange,borderRadius:6,padding:"4px 10px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>View all</button>
+            <button onClick={()=>setPage("announcements")} style={{background:"transparent",border:`1px solid ${C.orange66}`,color:C.orangeText,borderRadius:6,padding:"4px 10px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>View all</button>
             <button onClick={()=>setDismissedAnnId(latest.id)} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:16,padding:"0 4px",flexShrink:0}}>×</button>
           </div>
         );
       })()}
-      <div style={{maxWidth:780,margin:"0 auto",padding:"1.5rem 1rem"}}>
+      <div style={{maxWidth:980,margin:"0 auto",padding:"1.5rem 1rem"}}>
 
         {page==="home"&&(
           <div>
-            <div style={{background:`linear-gradient(135deg,${C.navy}cc,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
+            <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
               <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover",flexShrink:0}} onError={(e:any)=>e.target.style.display="none"}/>
               <div>
                 <h1 style={{fontFamily:"'Georgia',serif",fontSize:22,fontWeight:400,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
                 <p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
-                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`${C.orange}22`,border:`1px solid ${C.orange}44`,borderRadius:8,padding:"6px 14px"}}>
-                  <span style={{fontSize:15,color:C.orange,fontWeight:700}}>📅 Mon & Thu · 2:40 – 3:50 PM</span>
+                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
+                  <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Mon & Thu · 2:40 – 3:50 PM</span>
                 </div>
               </div>
             </div>
@@ -1223,7 +1242,7 @@ export default function App(){
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
                 {[["Members",data.users.length],["Events",data.events.length],["Units",(data.units||[]).length],["Problems Solved",myCompleted.length]].map(([l,v]:any)=>(
                   <div key={l} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem",textAlign:"center"}}>
-                    <div style={{fontSize:26,fontWeight:700,color:C.orange}}>{v}</div>
+                    <div style={{fontSize:26,fontWeight:700,color:C.orangeText}}>{v}</div>
                     <div style={{fontSize:13,color:C.muted,marginTop:4}}>{l}</div>
                   </div>
                 ))}
@@ -1239,9 +1258,9 @@ export default function App(){
                   return{name:u.name||u.username,username:u.username,count:perfect};
                 }).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
                   <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
-                    <div style={{width:26,height:26,borderRadius:"50%",background:i===0?`${C.orange}44`:i===1?`${C.orange}28`:`${C.muted}22`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orange:i===1?C.orange:C.muted,flexShrink:0}}>{i+1}</div>
-                    <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:6}}>you</span>}</div>
-                    <div style={{fontWeight:700,color:C.orange}}>{u.count}</div><div style={{fontSize:12,color:C.muted}}>solved</div>
+                    <div style={{width:26,height:26,borderRadius:"50%",background:i===0?C.orange44:i===1?C.orange28:C.muted22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orangeText:i===1?C.orangeText:C.muted,flexShrink:0}}>{i+1}</div>
+                    <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orangeText,marginLeft:6}}>you</span>}</div>
+                    <div style={{fontWeight:700,color:C.orangeText}}>{u.count}</div><div style={{fontSize:12,color:C.muted}}>solved</div>
                   </div>
                 ))}
                 {(data.users||[]).filter((u:any)=>u.role==="member").length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No solvers yet.</p>}
@@ -1355,7 +1374,7 @@ export default function App(){
               <>
                 <input style={{...inp,marginBottom:16}} value={problemSearch} onChange={(e:any)=>setProblemSearch(e.target.value)} placeholder="🔍 Search units and problems by title..."/>
                 {!problemSearch&&<>
-                  <div style={{background:`${C.orange}18`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>Units group problems together. Start a unit to go through them back-to-back.</div>
+                  <div style={{background:C.orange18,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>Units group problems together. Start a unit to go through them back-to-back.</div>
                   {(data.units||[]).length===0&&<p style={{color:C.muted}}>No units yet.</p>}
                   {(data.units||[]).map((unit:any)=>{
                     const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
@@ -1369,7 +1388,7 @@ export default function App(){
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{probs.map((p:any)=><Tag key={p.id} c={diffColor[p.difficulty]}>{p.title}</Tag>)}</div>
                           </div>
                           <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
-                            <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{solved}/{probs.length}</div>
+                            <div style={{fontSize:22,fontWeight:700,color:C.orangeText}}>{solved}/{probs.length}</div>
                             <div style={{fontSize:11,color:C.muted}}>solved</div>
                           </div>
                         </div>
@@ -1429,7 +1448,7 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+                <div style={{background:C.orange18,border:`1px solid ${C.orange33}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>
                   💡 Select a language and write your solution.
                 </div>
                 {(data.codingUnits||[]).length>0&&<>
@@ -1447,7 +1466,7 @@ export default function App(){
                             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{qs.map((q:any)=><Tag key={q.id} c={diffColor[q.difficulty]}>{q.title}</Tag>)}</div>
                           </div>
                           <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
-                            <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{solved}/{qs.length}</div>
+                            <div style={{fontSize:22,fontWeight:700,color:C.orangeText}}>{solved}/{qs.length}</div>
                             <div style={{fontSize:11,color:C.muted}}>solved</div>
                           </div>
                         </div>
@@ -1481,7 +1500,7 @@ export default function App(){
                           <div style={{fontSize:12,color:C.muted,marginTop:6}}>{cq.testCases?.length||0} test cases</div>
                         </div>
                         <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
-                          {pct!==null?<><div style={{fontSize:22,fontWeight:700,color:pct===100?C.green:pct>0?C.orange:C.red}}>{pct}%</div><div style={{fontSize:11,color:C.muted}}>best score</div></>:<div style={{fontSize:12,color:C.muted,marginTop:8}}>Not attempted</div>}
+                          {pct!==null?<><div style={{fontSize:22,fontWeight:700,color:pct===100?C.green:pct>0?C.orangeText:C.red}}>{pct}%</div><div style={{fontSize:11,color:C.muted}}>best score</div></>:<div style={{fontSize:12,color:C.muted,marginTop:8}}>Not attempted</div>}
                         </div>
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
@@ -1661,7 +1680,7 @@ function CodeEditor({code,onChange,lang}:any){
         <span>Tab: indent</span><span>Shift+Tab: unindent</span><span>Ctrl+/: comment</span><span>Auto-close: {"() [] {}"}</span>
       </div>
       <div style={{display:"flex",height:340,overflow:"hidden",minHeight:340}}>
-        <div style={{...sharedTextStyle,padding:"10px 8px 10px 10px",color:C.muted,background:`${C.bg}88`,borderRight:`1px solid ${C.border}`,flexShrink:0,minWidth:40,textAlign:"right",userSelect:"none" as const,overflowY:"hidden" as const}}>
+        <div style={{...sharedTextStyle,padding:"10px 8px 10px 10px",color:C.muted,background:C.bg88,borderRight:`1px solid ${C.border}`,flexShrink:0,minWidth:40,textAlign:"right",userSelect:"none" as const,overflowY:"hidden" as const}}>
           {Array.from({length:lineCount},(_,i)=>i+1).map(n=><div key={n}>{n}</div>)}
         </div>
         <div style={{flex:1,position:"relative",overflow:"hidden"}}>
@@ -1690,7 +1709,7 @@ function CodeEditor({code,onChange,lang}:any){
   );
 }
 
-function CodingView({cq,user,data,upd,onBack}:any){
+function CodingView({cq,user,data,upd,onBack,headerProps}:any){
   const STARTER:any={
     "Python":"# Read input with input() or sys.stdin, then print your answer\nimport sys\ndata = sys.stdin.read().split()\n\n# your code here\n",
     "Java":"import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner input = new Scanner(System.in);\n\n        // your code here\n\n    }\n}",
@@ -1750,8 +1769,8 @@ function CodingView({cq,user,data,upd,onBack}:any){
   const score=total>0?Math.round((passed/total)*100):0;
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <Header {...headerProps}/>
       <div style={{maxWidth:1100,margin:"0 auto",padding:"1.5rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding</OutBtn>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -1778,11 +1797,11 @@ function CodingView({cq,user,data,upd,onBack}:any){
                 <h3 style={{margin:0,fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1}}>Your Solution</h3>
                 <div style={{display:"flex",gap:4}}>
                   {LANGS.map(l=>(
-                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.orange:C.border}`,borderRadius:5,background:lang===l?`${C.orange}22`:"transparent",color:lang===l?C.orange:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
+                    <button key={l} onClick={()=>switchLang(l)} style={{padding:"3px 9px",fontSize:11,border:`1px solid ${lang===l?C.orange:C.border}`,borderRadius:5,background:lang===l?C.orange22:"transparent",color:lang===l?C.orangeText:C.muted,cursor:"pointer",fontWeight:lang===l?700:400}}>{l}</button>
                   ))}
                 </div>
               </div>
-              <div style={{background:`${C.orange}15`,border:`1px solid ${C.orange}33`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.orange,marginBottom:8}}>
+              <div style={{background:C.orange15,border:`1px solid ${C.orange33}`,borderRadius:6,padding:"6px 10px",fontSize:12,color:C.orangeText,marginBottom:8}}>
                 May take a few seconds per test case.
               </div>
               <CodeEditor code={code} onChange={setCode} lang={lang}/>
@@ -1799,7 +1818,7 @@ function CodingView({cq,user,data,upd,onBack}:any){
                 <SecBtn onClick={runCustomTest} disabled={customRunning}>{customRunning?"Running...":"▶ Run with this input"}</SecBtn>
               </div>
               {customOutput&&(
-                <div style={{background:"#0a0c10",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",fontFamily:"monospace",fontSize:12,whiteSpace:"pre-wrap",color:customOutput.kind==="ok"?"#d1d5db":C.red,maxHeight:220,overflowY:"auto"}}>
+                <div style={{background:"var(--editor-surface)",border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",fontFamily:"monospace",fontSize:12,whiteSpace:"pre-wrap",color:customOutput.kind==="ok"?C.text:C.red,maxHeight:220,overflowY:"auto"}}>
                   {customOutput.kind==="ok"?(customOutput.text||"(no output)"):customOutput.text}
                   {customOutput.kind==="ok"&&customOutput.stderr&&<div style={{color:C.red,marginTop:6}}>{customOutput.stderr}</div>}
                 </div>
@@ -1816,14 +1835,14 @@ function CodingView({cq,user,data,upd,onBack}:any){
             {results&&(
               <div style={cardS}>
                 <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-                  <div style={{fontSize:28,fontWeight:700,color:score===100?C.green:score>0?C.orange:C.red}}>{score}%</div>
+                  <div style={{fontSize:28,fontWeight:700,color:score===100?C.green:score>0?C.orangeText:C.red}}>{score}%</div>
                   <div>
                     <div style={{fontWeight:600,fontSize:14}}>{passed}/{total} test cases passed</div>
                     <div style={{fontSize:12,color:C.muted}}>{score===100?"All tests passed! 🎉":score>0?"Keep going, almost there!":"No tests passed yet"}</div>
                   </div>
                 </div>
                 {results.map((r:any,i:number)=>(
-                  <div key={i} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:r.pass?`${C.green}15`:`${C.red}15`,border:`1px solid ${r.pass?C.green:C.red}33`,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                  <div key={i} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:r.pass?C.green15:C.red15,border:`1px solid ${r.pass?C.green33:C.red33}`,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
                     <span style={{color:r.pass?C.green:C.red,fontWeight:700}}>{r.pass?"✓":"✗"}</span>
                     <span style={{color:C.muted}}>Test {i+1}{r.pass?" passed":r.got?.startsWith("Compile error")?" — compile error":r.got?.startsWith("Error")?" — runtime error":r.got==="Time limit exceeded"?" — time limit exceeded":" failed"}</span>
                   </div>
@@ -1898,7 +1917,7 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
             <div key={item.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 4px",borderBottom:`1px solid ${C.border}`}}>
               <span style={{fontWeight:500,fontSize:13}}>{item.title}</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <a href={item.url} target="_blank" rel="noreferrer" style={{color:C.orange,fontSize:13}}>Open</a>
+                <a href={item.url} target="_blank" rel="noreferrer" style={{color:C.orangeText,fontSize:13}}>Open</a>
                 {isOfficer&&<button onClick={()=>removeLink(item.id)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:15}}>×</button>}
               </div>
             </div>
@@ -2009,7 +2028,7 @@ function OfficersPage({data,upd,isDev,user}:any){
     setEventForm({title:"",date:"",time:"2:40 PM",desc:""});setShowEvent(false);
   };
   const toggleAssignee=(name:string)=>setTaskForm((f:any)=>({...f,assignees:f.assignees.includes(name)?f.assignees.filter((a:string)=>a!==name):[...f.assignees,name]}));
-  const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
+  const overlay:any={position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
   const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440,maxHeight:"88vh",overflowY:"auto"};
   return(
     <div>
@@ -2107,10 +2126,10 @@ function OfficersPage({data,upd,isDev,user}:any){
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
           <h2 style={{margin:0,fontSize:18}}>Bug Reports</h2>
           <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>setBugTab("open")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${bugTab==="open"?C.orange:C.border}`,borderRadius:6,background:bugTab==="open"?`${C.orange}22`:"transparent",color:bugTab==="open"?C.orange:C.muted,cursor:"pointer",fontWeight:bugTab==="open"?700:400}}>
+            <button onClick={()=>setBugTab("open")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${bugTab==="open"?C.orange:C.border}`,borderRadius:6,background:bugTab==="open"?C.orange22:"transparent",color:bugTab==="open"?C.orangeText:C.muted,cursor:"pointer",fontWeight:bugTab==="open"?700:400}}>
               Open ({openBugs.length})
             </button>
-            <button onClick={()=>setBugTab("resolved")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${bugTab==="resolved"?C.green:C.border}`,borderRadius:6,background:bugTab==="resolved"?`${C.green}22`:"transparent",color:bugTab==="resolved"?C.green:C.muted,cursor:"pointer",fontWeight:bugTab==="resolved"?700:400}}>
+            <button onClick={()=>setBugTab("resolved")} style={{padding:"5px 14px",fontSize:13,border:`1px solid ${bugTab==="resolved"?C.green:C.border}`,borderRadius:6,background:bugTab==="resolved"?C.green22:"transparent",color:bugTab==="resolved"?C.green:C.muted,cursor:"pointer",fontWeight:bugTab==="resolved"?700:400}}>
               Resolved ({resolvedBugs.length})
             </button>
           </div>
@@ -2273,7 +2292,7 @@ function AboutPage({data,upd,isOfficer}:any){
       </div>
       <div style={{...cardS,marginBottom:20}}>
         {editing?(<><label style={lbl}>Heading</label><input style={{...inp,marginBottom:12}} value={draft.heading} onChange={(e:any)=>setDraft((d:any)=>({...d,heading:e.target.value}))}/><label style={lbl}>Body text</label><textarea style={{...inp,minHeight:140,resize:"vertical"}} value={draft.body} onChange={(e:any)=>setDraft((d:any)=>({...d,body:e.target.value}))}/></>)
-        :(<><h3 style={{fontFamily:"'Georgia',serif",fontSize:20,fontWeight:400,marginTop:0,marginBottom:12,color:C.orange}}>{about.heading}</h3>{(about.body||'').split("\n").map((line:string,i:number)=>line?<p key={i} style={{margin:"0 0 10px",lineHeight:1.7}}>{line}</p>:<br key={i}/>)}</>)}
+        :(<><h3 style={{fontFamily:"'Georgia',serif",fontSize:20,fontWeight:400,marginTop:0,marginBottom:12,color:C.orangeText}}>{about.heading}</h3>{(about.body||'').split("\n").map((line:string,i:number)=>line?<p key={i} style={{margin:"0 0 10px",lineHeight:1.7}}>{line}</p>:<br key={i}/>)}</>)}
       </div>
       <div style={{marginBottom:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -2308,7 +2327,7 @@ function AboutPage({data,upd,isOfficer}:any){
       return(
       <div key={realIndex} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",textAlign:"center"}}>
         {o.image?<img src={o.image} alt={o.name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",border:`2px solid ${C.orange}`,margin:"0 auto 8px",display:"block"}}/>
-          : <div style={{width:56,height:56,borderRadius:"50%",background:`${C.orange}33`,border:`2px solid ${C.orange}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontWeight:700,fontSize:20,color:C.orange}}>{(o.name||"?")[0]}</div>}
+          : <div style={{width:56,height:56,borderRadius:"50%",background:C.orange33,border:`2px solid ${C.orange}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px",fontWeight:700,fontSize:20,color:C.orangeText}}>{(o.name||"?")[0]}</div>}
         
         {editing?(<>
           <OfficerImgPick image={o.image} onPick={(v:string)=>{const os=[...draft.officers];os[i]={...os[i],image:v};setDraft((d:any)=>({...d,officers:os}));}}/>
@@ -2344,7 +2363,7 @@ function AboutPage({data,upd,isOfficer}:any){
         </>):(
           <>
             <div style={{fontWeight:600,fontSize:14}}>{o.name||"—"}</div>
-            <div style={{fontSize:12,color:C.orange,marginTop:2}}>{o.role}</div>
+            <div style={{fontSize:12,color:C.orangeText,marginTop:2}}>{o.role}</div>
           </>
         )}
       </div>
@@ -2358,14 +2377,14 @@ function AboutPage({data,upd,isOfficer}:any){
           {editing&&<SecBtn onClick={addContact} style={{fontSize:12,padding:"5px 12px"}}>+ Add button</SecBtn>}
         </div>
         {contacts.length===0&&!editing&&<p style={{color:C.muted,fontSize:13}}>No contact links yet.</p>}
-        {!editing&&contacts.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:10}}>{contacts.map((c:any,i:number)=><a key={i} href={c.url} target="_blank" rel="noreferrer" style={{display:"inline-block",background:`${C.orange}18`,color:C.orange,border:`1px solid ${C.orange}44`,padding:"8px 18px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>{c.label||"Link"}</a>)}</div>}
+        {!editing&&contacts.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:10}}>{contacts.map((c:any,i:number)=><a key={i} href={c.url} target="_blank" rel="noreferrer" style={{display:"inline-block",background:C.orange18,color:C.orangeText,border:`1px solid ${C.orange44}`,padding:"8px 18px",borderRadius:8,fontSize:14,fontWeight:600,textDecoration:"none"}}>{c.label||"Link"}</a>)}</div>}
         {editing&&<div>{contacts.map((c:any,i:number)=><div key={c.id} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}><input style={{...inp,width:140}} value={c.label} placeholder="Button label" onChange={(e:any)=>updateContact(i,"label",e.target.value)}/><input style={inp} value={c.url} placeholder="https://..." onChange={(e:any)=>updateContact(i,"url",e.target.value)}/><button onClick={()=>removeContact(i)} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:18,flexShrink:0}}>×</button></div>)}</div>}
       </div>
     </div>
   );
 }
 
-function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
+function UnitView({unit,data,user,upd,onBack,onFinish,onProblem,headerProps}:any){
   const probs=(unit.problemIds||[]).map((id:any)=>data.problems.find((p:any)=>String(p.id)===String(id))).filter(Boolean);
   const myCompleted=user?((data.completions||{})[user.username]||[]):[];
   const startUnit=()=>{
@@ -2374,11 +2393,11 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
     go(0);
   };
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <Header {...headerProps}/>
       <div style={{maxWidth:700,margin:"0 auto",padding:"2rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Problems</OutBtn>
-        <div style={{background:`linear-gradient(135deg,${C.navy}99,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
+        <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
           {unit.level&&<Tag c={unit.level==="advanced"?C.red:C.green}>{unit.level==="advanced"?"Advanced":"Novice"}</Tag>}
           {unit.desc&&<p style={{color:C.muted,margin:"8px 0 16px",fontSize:14}}>{unit.desc}</p>}
@@ -2398,16 +2417,16 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem}:any){
   );
 }
 
-function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
+function CodingUnitView({unit,data,user,onBack,onQuestion,headerProps}:any){
   const qs=(unit.codingQuestionIds||[]).map((id:any)=>(data.codingQuestions||[]).find((q:any)=>String(q.id)===String(id))).filter(Boolean);
   const mySubs=user?((data.codingSubmissions||{})[user.username]||{}):{};
   const solved=qs.filter((q:any)=>mySubs[q.id]?.score===100).length;
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <Header {...headerProps}/>
       <div style={{maxWidth:700,margin:"0 auto",padding:"2rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding Questions</OutBtn>
-        <div style={{background:`linear-gradient(135deg,${C.navy}99,#1a1d27)`,borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
+        <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
           {unit.level&&<Tag c={unit.level==="advanced"?C.red:C.green}>{unit.level==="advanced"?"Advanced":"Novice"}</Tag>}
           {unit.desc&&<p style={{color:C.muted,margin:"8px 0 8px",fontSize:14}}>{unit.desc}</p>}
@@ -2425,7 +2444,7 @@ function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
                 {q.level&&<Tag c={q.level==="advanced"?C.red:C.green}>{q.level==="advanced"?"Advanced":"Novice"}</Tag>}
                 {q.language&&<Tag c={C.purple}>{q.language}</Tag>}
               </div>
-              {pct!==null&&<div style={{fontWeight:700,fontSize:14,color:pct===100?C.green:pct>0?C.orange:C.red}}>{pct}%</div>}
+              {pct!==null&&<div style={{fontWeight:700,fontSize:14,color:pct===100?C.green:pct>0?C.orangeText:C.red}}>{pct}%</div>}
             </div>
           );
         })}
@@ -2434,7 +2453,7 @@ function CodingUnitView({unit,data,user,onBack,onQuestion}:any){
   );
 }
 
-function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
+function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext,headerProps}:any){
   const [selected,setSelected]=useState<any>(null);
   const [submitted,setSubmitted]=useState(false);
   const [result,setResult]=useState<any>(null);
@@ -2473,12 +2492,12 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
   };
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      <Header user={user} onSignOut={()=>{}} isDev={false} onManage={()=>{}}/>
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <Header {...headerProps}/>
       <div style={{maxWidth:600,margin:"0 auto",padding:"2rem 1rem"}}>
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back</OutBtn>
         {unitCtx&&(
-          <div style={{background:`${C.orange}18`,border:`1px solid ${C.orange}33`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orange}}>
+          <div style={{background:C.orange18,border:`1px solid ${C.orange33}`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>
             {unitCtx.unitTitle} · Problem {unitCtx.index+1} of {unitCtx.total}
           </div>
         )}
@@ -2497,8 +2516,8 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
               const isCorrect=submitted&&i===prob.answer;
               const isWrong=submitted&&isSelected&&i!==prob.answer;
               return(
-                <button key={i} onClick={()=>!submitted&&setSelected(i)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,borderRadius:8,background:isCorrect?`${C.green}18`:isWrong?`${C.red}18`:isSelected?`${C.orange}18`:C.bgInput,cursor:submitted?"default":"pointer",textAlign:"left",color:C.text,fontFamily:"'Inter','Segoe UI',sans-serif",fontSize:14}}>
-                  <div style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.muted,flexShrink:0,background:isCorrect?`${C.green}22`:isWrong?`${C.red}22`:isSelected?`${C.orange}22`:"transparent"}}>{String.fromCharCode(65+i)}</div>
+                <button key={i} onClick={()=>!submitted&&setSelected(i)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,borderRadius:8,background:isCorrect?C.green18:isWrong?C.red18:isSelected?C.orange18:C.bgInput,cursor:submitted?"default":"pointer",textAlign:"left",color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif",fontSize:14}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${isCorrect?C.green:isWrong?C.red:isSelected?C.orange:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:isCorrect?C.green:isWrong?C.red:isSelected?C.orangeText:C.muted,flexShrink:0,background:isCorrect?C.green22:isWrong?C.red22:isSelected?C.orange22:"transparent"}}>{String.fromCharCode(65+i)}</div>
                   <span>{choice}</span>
                   {isCorrect&&<span style={{marginLeft:"auto",color:C.green,fontSize:16}}>✓</span>}
                   {isWrong&&<span style={{marginLeft:"auto",color:C.red,fontSize:16}}>✗</span>}
@@ -2508,7 +2527,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
           </div>
           {!submitted&&<div style={{marginTop:16,display:"flex",justifyContent:"flex-end"}}><Btn onClick={submit} disabled={selected===null}>Submit answer</Btn></div>}
           {submitted&&(
-            <div style={{marginTop:16,padding:"12px 16px",borderRadius:8,background:result?`${C.green}18`:`${C.red}18`,border:`1px solid ${result?C.green:C.red}44`}}>
+            <div style={{marginTop:16,padding:"12px 16px",borderRadius:8,background:result?C.green18:C.red18,border:`1px solid ${result?C.green44:C.red44}`}}>
               <div style={{fontWeight:700,color:result?C.green:C.red,fontSize:15,marginBottom:4}}>{result?"✓ Correct!":"✗ Incorrect"}</div>
               {!result&&<div style={{fontSize:13,color:C.muted}}>The correct answer was <strong style={{color:C.green}}>{prob.choices[prob.answer]}</strong>.</div>}
               {unitCtx&&onNext&&(
@@ -2527,7 +2546,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext}:any){
 function LeaderboardPage({data,user}:any){
   const [lbTab,setLbTab]=useState("solved");
   const medal=(i:number)=>i===0?C.orange:i===1?C.orange:C.muted;
-  const medalBg=(i:number)=>i===0?`${C.orange}44`:i===1?`${C.orange}28`:C.border;
+  const medalBg=(i:number)=>i===0?C.orange44:i===1?C.orange28:C.border;
   const lbUsers=(data.users||[]).filter((u:any)=>u.role==="member"); // officers/developers don't appear on leaderboards
   const solvedRows=[...lbUsers].map((u:any)=>({name:u.name||u.username,username:u.username,value:((data.completions||{})[u.username]||[]).length,label:"solved"})).sort((a:any,b:any)=>b.value-a.value);
   const accuracyRows=[...lbUsers].map((u:any)=>{const a=((data.attempts||{})[u.username])||{total:0,correct:0};return{name:u.name||u.username,username:u.username,value:a.total>0?Math.round((a.correct/a.total)*100):0,sub:`${a.correct||0}/${a.total||0} attempts`,label:"%"};}).sort((a:any,b:any)=>b.value-a.value);
@@ -2538,7 +2557,7 @@ function LeaderboardPage({data,user}:any){
     return{name:u.name||u.username,username:u.username,value:perfect,sub:total>0?`${total} attempted`:"",label:"perfect"};
   }).sort((a:any,b:any)=>b.value-a.value);
   const rows=lbTab==="solved"?solvedRows:lbTab==="accuracy"?accuracyRows:codingRows;
-  const tabBtn=(t:string)=>({background:lbTab===t?`${C.orange}28`:"transparent",color:lbTab===t?C.orange:C.muted,border:`1px solid ${lbTab===t?C.orange:C.border}`,padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:lbTab===t?700:400});
+  const tabBtn=(t:string)=>({background:lbTab===t?C.orange28:"transparent",color:lbTab===t?C.orangeText:C.muted,border:`1px solid ${lbTab===t?C.orange:C.border}`,padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:lbTab===t?700:400});
   return(
     <div>
       <h2 style={{marginBottom:16}}>Leaderboard</h2>
@@ -2550,8 +2569,8 @@ function LeaderboardPage({data,user}:any){
       {rows.map((u:any,i:number)=>(
         <div key={u.username} style={{...cardS,display:"flex",alignItems:"center",gap:14,marginBottom:8}}>
           <div style={{width:32,height:32,borderRadius:"50%",background:medalBg(i),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:medal(i),flexShrink:0}}>{i+1}</div>
-          <div style={{flex:1}}><span style={{fontWeight:600}}>{u.name}</span>{u.username===user.username&&<span style={{fontSize:11,color:C.orange,marginLeft:8}}>you</span>}{u.sub&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{u.sub}</div>}</div>
-          <div style={{fontWeight:700,color:C.orange,fontSize:18}}>{u.value}{u.label==="%"?"%":""}</div>
+          <div style={{flex:1}}><span style={{fontWeight:600}}>{u.name}</span>{u.username===user.username&&<span style={{fontSize:11,color:C.orangeText,marginLeft:8}}>you</span>}{u.sub&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{u.sub}</div>}</div>
+          <div style={{fontWeight:700,color:C.orangeText,fontSize:18}}>{u.value}{u.label==="%"?"%":""}</div>
           {u.label!=="%"&&<div style={{fontSize:12,color:C.muted}}>{u.label}</div>}
         </div>
       ))}
@@ -2583,19 +2602,19 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     const toggleSel=(id:any)=>setSelProbs((s:any)=>s.includes(id)?s.filter((x:any)=>x!==id):[...s,id]);
     const saveEdit=()=>{upd((d:any)=>({...d,units:d.units.map((u:any)=>u.id===editUnit.id?{...u,problemIds:selProbs}:u)}));close();};
     return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+      <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit problems</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editUnit.title}</p>
           <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
             {(data.problems||[]).map((p:any)=>{const sel=selProbs.includes(p.id);return(
-              <div key={p.id} onClick={()=>toggleSel(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+              <div key={p.id} onClick={()=>toggleSel(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?C.orange18:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{flex:1,fontSize:14}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
               </div>
             );})}
           </div>
-          <p style={{fontSize:12,color:C.orange,margin:"0 0 14px"}}>{selProbs.length} problem{selProbs.length!==1?"s":""} selected</p>
+          <p style={{fontSize:12,color:C.orangeText,margin:"0 0 14px"}}>{selProbs.length} problem{selProbs.length!==1?"s":""} selected</p>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={saveEdit}>Save changes</Btn></div>
         </div>
       </div>
@@ -2606,19 +2625,19 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     const toggleSel=(id:any)=>setSelCodingQs((s:any)=>s.includes(id)?s.filter((x:any)=>x!==id):[...s,id]);
     const saveEdit=()=>{upd((d:any)=>({...d,codingUnits:d.codingUnits.map((u:any)=>u.id===editCodingUnit.id?{...u,codingQuestionIds:selCodingQs}:u)}));close();};
     return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+      <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit questions</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editCodingUnit.title}</p>
           <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
             {(data.codingQuestions||[]).map((q:any)=>{const sel=selCodingQs.includes(q.id);return(
-              <div key={q.id} onClick={()=>toggleSel(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+              <div key={q.id} onClick={()=>toggleSel(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?C.orange18:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{flex:1,fontSize:14}}>{q.title}</span><Tag c={diffColor[q.difficulty]}>{q.difficulty}</Tag>
               </div>
             );})}
           </div>
-          <p style={{fontSize:12,color:C.orange,margin:"0 0 14px"}}>{selCodingQs.length} question{selCodingQs.length!==1?"s":""} selected</p>
+          <p style={{fontSize:12,color:C.orangeText,margin:"0 0 14px"}}>{selCodingQs.length} question{selCodingQs.length!==1?"s":""} selected</p>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={saveEdit}>Save changes</Btn></div>
         </div>
       </div>
@@ -2686,7 +2705,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       close();
     };
     return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+      <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:520,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 8px",fontSize:16}}>Import from Google Sheets</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 12px",lineHeight:1.5}}>
@@ -2695,7 +2714,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
             Questions with a title that already exists are skipped automatically.
           </p>
           <input style={{...inp,marginBottom:10}} value={csvUrl} onChange={(e:any)=>setCsvUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"/>
-          {csvErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {csvErr}</div>}
+          {csvErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:10}}>⚠ {csvErr}</div>}
           {!preview&&<div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><OutBtn onClick={close}>Cancel</OutBtn><Btn onClick={load} disabled={!csvUrl.trim()||busy}>{busy?"Loading...":"Preview import"}</Btn></div>}
           {preview&&<>
             <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:12}}>
@@ -2705,7 +2724,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
                 </div>
               ))}
             </div>
-            <p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{preview.length} new problem(s) ready to import.</p>
+            <p style={{fontSize:12,color:C.orangeText,margin:"0 0 4px"}}>{preview.length} new problem(s) ready to import.</p>
             {skipCount>0&&<p style={{fontSize:12,color:C.muted,margin:"0 0 12px"}}>Skipped {skipCount} row(s) already in your problem set.</p>}
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:skipCount>0?0:8}}><OutBtn onClick={()=>setPreview(null)}>Back</OutBtn><Btn onClick={doImport}>Import {preview.length} problem(s)</Btn></div>
           </>}
@@ -2731,10 +2750,10 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
       close();
     };
     return(
-      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
+      <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
         <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:580,maxHeight:"90vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 16px",fontSize:16}}>{isEditCodingQ?"Edit Coding Question":"New Coding Question"}</h3>
-          {cqErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {cqErr}</div>}
+          {cqErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {cqErr}</div>}
           <label style={lbl}>Title <span style={{color:C.red}}>*</span></label>
           <input style={{...inp,marginBottom:10}} value={cqForm.title} onChange={(e:any)=>setCqForm((f:any)=>({...f,title:e.target.value}))} placeholder="e.g. Sum Two Numbers"/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
@@ -2826,14 +2845,14 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
   const titles:any={ann:"New Announcement",evt:"New Event",prob:"New Problem",unit:"Create Unit",codingUnit:"Create Coding Unit"};
   const modalKey=typeof modal==="string"?modal:modal?.type;
   const modalTitle=isEditProb?"Edit Problem":(titles[modalKey]||"Add");
-  const overlay:any={position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
+  const overlay:any={position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
   const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","codingUnit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
 
   return(
     <div style={overlay} onClick={close}>
       <div style={box} onClick={(e:any)=>e.stopPropagation()}>
         <h3 style={{margin:"0 0 16px",fontSize:16}}>{modalTitle}</h3>
-        {formErr&&<div style={{background:`${C.red}18`,border:`1px solid ${C.red}44`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {formErr}</div>}
+        {formErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {formErr}</div>}
 
         {modal==="ann"&&<>
           <label style={lbl}>Title <span style={{color:C.red}}>*</span></label>
@@ -2869,7 +2888,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <label style={lbl}>Answer choices — select the correct one <span style={{color:C.red}}>*</span></label>
           {[0,1,2,3].map(i=>(<div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
             <input type="radio" name="ans" checked={Number(f.answer)===i} onChange={()=>set({answer:i})} style={{accentColor:C.orange,flexShrink:0}}/>
-            <div style={{width:24,height:24,borderRadius:"50%",background:`${C.orange}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.orange,flexShrink:0}}>{String.fromCharCode(65+i)}</div>
+            <div style={{width:24,height:24,borderRadius:"50%",background:C.orange22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.orangeText,flexShrink:0}}>{String.fromCharCode(65+i)}</div>
             <input style={{...inp,borderColor:(!f.choices[i].trim()&&formErr)?C.red:C.border}} value={f.choices[i]} placeholder={`Choice ${String.fromCharCode(65+i)}`} onChange={(e:any)=>setChoice(i,e.target.value)}/>
           </div>))}
         </>}
@@ -2885,13 +2904,13 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedProblemIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
             {(data.problems||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No problems yet. Create some first.</p>}
             {(data.problems||[]).map((p:any)=>{const sel=f.selectedProblemIds.includes(p.id);return(
-              <div key={p.id} onClick={()=>toggleProb(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+              <div key={p.id} onClick={()=>toggleProb(p.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?C.orange18:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{flex:1,fontSize:14}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>
               </div>
             );})}
           </div>
-          {f.selectedProblemIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length>1?"s":""} selected</p>}
+          {f.selectedProblemIds.length>0&&<p style={{fontSize:12,color:C.orangeText,margin:"0 0 4px"}}>{f.selectedProblemIds.length} problem{f.selectedProblemIds.length>1?"s":""} selected</p>}
         </>}
 
         {modal==="codingUnit"&&<>
@@ -2905,13 +2924,13 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
           <div style={{maxHeight:220,overflowY:"auto",border:`1px solid ${!f.selectedCodingQIds.length&&formErr?C.red:C.border}`,borderRadius:8,padding:8,marginBottom:8}}>
             {(data.codingQuestions||[]).length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No coding questions yet. Create some first.</p>}
             {(data.codingQuestions||[]).map((q:any)=>{const sel=f.selectedCodingQIds.includes(q.id);return(
-              <div key={q.id} onClick={()=>toggleCodingQ(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?`${C.orange}18`:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
+              <div key={q.id} onClick={()=>toggleCodingQ(q.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:6,cursor:"pointer",background:sel?C.orange18:"transparent",border:`1px solid ${sel?C.orange:"transparent"}`,marginBottom:4}}>
                 <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?C.orange:C.border}`,background:sel?C.orange:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{sel&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
                 <span style={{flex:1,fontSize:14}}>{q.title}</span><Tag c={diffColor[q.difficulty]||C.muted}>{q.difficulty}</Tag>
               </div>
             );})}
           </div>
-          {f.selectedCodingQIds.length>0&&<p style={{fontSize:12,color:C.orange,margin:"0 0 4px"}}>{f.selectedCodingQIds.length} question{f.selectedCodingQIds.length>1?"s":""} selected</p>}
+          {f.selectedCodingQIds.length>0&&<p style={{fontSize:12,color:C.orangeText,margin:"0 0 4px"}}>{f.selectedCodingQIds.length} question{f.selectedCodingQIds.length>1?"s":""} selected</p>}
         </>}
 
         <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
