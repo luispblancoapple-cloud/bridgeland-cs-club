@@ -1206,7 +1206,7 @@ export default function App(){
       <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
       <main className="auth-stage">
         <aside className="auth-art auth-bear-art" aria-hidden="true">
-          <div className="auth-bear-orbit"><span className="auth-bear-placeholder">🐻</span><img src={LOGO_URL} alt="" onError={(e:any)=>e.target.style.display="none"}/></div>
+          <div className="auth-bear-orbit"><img src="/bridgeland-bears-logo.png" alt="" /></div>
           <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
           <span className="auth-art-spark auth-spark-one">✳</span>
           <span className="auth-art-spark auth-spark-two">＋</span>
