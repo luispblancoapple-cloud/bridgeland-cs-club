@@ -2523,7 +2523,7 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
   };
   if(activeTest)return <UILTestRunner key={activeTest.id} test={activeTest} username={username} onBack={leaveTest} onStatusChange={onRunnerStatus}/>;
   return(
-    <div>
+    <div className="uil-prep-page">
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:18}}>
         <div><div style={{fontSize:12,fontWeight:700,color:C.orangeText,textTransform:"uppercase",letterSpacing:1}}>Contest preparation</div><h2 style={{margin:"3px 0 4px"}}>UIL Computer Science Prep</h2><div style={{fontSize:14,color:C.muted}}>Step-by-step Java topics and official UIL Written practice tests.</div></div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -2533,12 +2533,12 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
       </div>
       {section==="guide"?(
         <>
-          <div style={{...cardS,borderLeft:`4px solid ${C.orange}`,marginBottom:18}}>
+          <div className="uil-prep-feature" style={{...cardS,borderLeft:`4px solid ${C.orange}`,marginBottom:18}}>
             <h3 style={{margin:"0 0 5px"}}>The first 15: make these routine</h3>
             <p style={{fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.6}}>UIL identifies these question types as the opening section of the written test. Use the steps and watch-outs to practice a reliable solving process; official test questions remain unchanged.</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,350px),1fr))",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,450px),1fr))",gap:16}}>
               {FIRST_15_TIPS.map((tip:any)=>(
-                <details key={tip.title} style={{border:`1px solid ${C.border}`,borderRadius:10,background:C.bgCard,padding:"11px 13px"}}>
+                <details key={tip.title} className="uil-tip-card" style={{border:`1px solid ${C.border}`,borderRadius:10,background:C.bgCard,padding:"11px 13px"}}>
                   <summary style={{fontWeight:700,cursor:"pointer",lineHeight:1.45}}>{tip.title}</summary>
                   <ol style={{fontSize:13,color:C.text,paddingLeft:20,lineHeight:1.55,margin:"10px 0"}}>{tip.steps.map((step:string,i:number)=><li key={i} style={{marginBottom:5}}>{step}</li>)}</ol>
                   <div style={{fontSize:12,color:C.orangeText,background:C.orange18,borderRadius:7,padding:"7px 9px"}}><strong>Watch for:</strong> {tip.watch}</div>
@@ -2547,9 +2547,9 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
             </div>
           </div>
           <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,400px),1fr))",gap:16}}>
             {UIL_TOPIC_UNITS.map((unit:any)=>(
-              <div key={unit.title} style={{...cardS,margin:0}}>
+              <div key={unit.title} className="uil-topic-card" style={{...cardS,margin:0}}>
                 <h3 style={{margin:"0 0 10px",fontSize:16}}>{unit.title}</h3>
                 <ul style={{margin:0,paddingLeft:19,color:C.muted,fontSize:13,lineHeight:1.65}}>{unit.topics.map((topic:string)=><li key={topic} style={{marginBottom:4}}>{topic}</li>)}</ul>
               </div>
@@ -2559,16 +2559,16 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
         </>
       ):(
         <>
-          <div style={{...cardS,marginBottom:16,background:C.blue18,border:`1px solid ${C.blue33}`}}>
+          <div className="uil-test-intro" style={{...cardS,marginBottom:16,background:C.blue18,border:`1px solid ${C.blue33}`}}>
             <strong>Official UIL Computer Science Written tests · 2022–2026</strong>
             <div style={{fontSize:13,color:C.muted,marginTop:4}}>Choose a round to open the original test. Scroll through the pages and select answers directly on the paper.</div>
           </div>
           {[2026,2025,2024,2023,2022].map(year=>(
-            <section key={year} style={{marginBottom:20}}>
+            <section key={year} className="uil-test-year" style={{marginBottom:20}}>
               <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"0 0 10px"}}>{year} tests</h3>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,220px),1fr))",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:14}}>
                 {UIL_TESTS.filter((test:any)=>test.year===year).map((test:any)=>(
-                  <div key={test.id} style={{...cardS,margin:0,padding:"14px 16px"}}>
+                  <div key={test.id} className="uil-test-card" style={{...cardS,margin:0,padding:"14px 16px"}}>
                     <div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>
                     <div style={{fontSize:12,color:C.muted,marginBottom:12}}>40 questions · 45 minutes</div>
                     <Btn onClick={()=>startTest(test)}>Take test →</Btn>
@@ -2577,7 +2577,7 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
               </div>
             </section>
           ))}
-          <div style={{fontSize:12,color:C.muted}}>Source: <a href="https://www.uiltexas.org/academics/page/high-school-academic-study-materials" target="_blank" rel="noreferrer">UIL High School Academic Study Materials</a>. Test packets remain hosted by UIL.</div>
+          <div className="uil-test-source" style={{fontSize:12,color:C.muted}}>Source: <a href="https://www.uiltexas.org/academics/page/high-school-academic-study-materials" target="_blank" rel="noreferrer">UIL High School Academic Study Materials</a>. Test packets remain hosted by UIL.</div>
         </>
       )}
     </div>
