@@ -80,6 +80,14 @@ const C = {
 };
 const diffColor: any = { Easy:C.green,Medium:C.orange,Hard:C.red };
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function getNextClubMeeting(now=new Date()):Date{
+  const meetingDays=[1,4]; // Monday and Thursday
+  for(let offset=0;offset<7;offset++){
+    const candidate=new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset,14,40,0,0);
+    if(meetingDays.includes(candidate.getDay())&&candidate.getTime()>=now.getTime())return candidate;
+  }
+  return new Date(now.getFullYear(),now.getMonth(),now.getDate()+7,14,40,0,0);
+}
 const HOURS=["12","1","2","3","4","5","6","7","8","9","10","11"];
 const MINS=["00","15","30","45"];
 const AMPM=["AM","PM"];
@@ -1091,6 +1099,8 @@ export default function App(){
   const isDev=user&&user.role==="developer";
   const isGuest=user&&user.role==="guest";
   const myCompleted=user&&!isGuest?((data.completions||{})[user.username]||[]):[];
+  const nextMeeting=getNextClubMeeting();
+  const nextMeetingDate=nextMeeting.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
 
   useEffect(()=>{
     if(isOfficer)maybeAutoBackup(user.username);
@@ -1231,10 +1241,10 @@ export default function App(){
             <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
               <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover",flexShrink:0}} onError={(e:any)=>e.target.style.display="none"}/>
               <div>
-                <h1 style={{fontFamily:"'Georgia',serif",fontSize:22,fontWeight:400,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
+                <h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
                 <p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
                 <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
-                  <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Mon & Thu · 2:40 – 3:50 PM</span>
+                  <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Next meeting · {nextMeetingDate} · 2:40–3:50 PM</span>
                 </div>
               </div>
             </div>
