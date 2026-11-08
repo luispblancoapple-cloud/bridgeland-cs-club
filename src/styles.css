@@ -198,7 +198,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   grid-template-columns: minmax(0, .9fr) minmax(680px, 840px) minmax(0, .9fr);
   align-items: center;
   gap: clamp(28px, 3vw, 56px);
-  width: min(100% - 48px, 1800px);
+  width: min(100% - 48px, 2200px);
   min-height: calc(100vh - 82px);
   margin: 0 auto;
   padding: 16px 0 24px;
@@ -284,7 +284,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-exam-submit.secondary { border-color: var(--line); color: var(--text); background: var(--surface); }
 .uil-exam-submit:disabled { opacity: .65; cursor: wait; }
 .uil-paper-scroll { display: grid; justify-items: center; gap: 18px; width: 100%; padding: 2px 0 24px; }
-.uil-paper-page { position: relative; container-type: inline-size; width: min(100%, 1440px); overflow: hidden; background: #fff; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
+.uil-paper-page { position: relative; container-type: inline-size; width: min(100%, 2200px); overflow: hidden; background: #fff; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
 .uil-paper-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .uil-paper-bubble { position: absolute; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: clamp(9px, 1.8cqw, 22px); height: clamp(9px, 1.8cqw, 22px); padding: 0; transform: translate(-50%, -50%); border: 2px solid var(--blue-text); border-radius: 50%; background: rgba(226, 246, 255, .98); color: #173c52; box-shadow: 0 1px 5px rgba(11, 18, 32, .28); font: 800 clamp(6px, 1.1cqw, 12px)/1 'DM Sans', sans-serif; cursor: pointer; }
 .uil-paper-bubble:hover:not(:disabled) { z-index: 2; border-color: var(--orange-text); background: var(--orange); box-shadow: 0 2px 9px rgba(11, 18, 32, .32); transform: translate(-50%, -50%) scale(1.16); }
@@ -293,14 +293,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-paper-bubble.correct { border-color: #18875d; background: #37b782; color: #fff; }
 .uil-paper-bubble.incorrect { border-color: #c44545; background: #df6868; color: #fff; }
 .uil-paper-bubble:disabled { cursor: default; }
-.uil-paper-loading, .uil-paper-error { width: min(100%, 1440px); padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: center; }
+.uil-paper-loading, .uil-paper-error { width: min(100%, 2200px); padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: center; }
 .uil-paper-page-group { display: grid; justify-items: center; gap: 0; width: 100%; }
-.uil-written-paper-fragment { width: min(100%, 1440px); padding: 14px 18px; border: 1px solid #d9e2ea; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; color: #19334b; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
+.uil-written-paper-fragment { width: min(100%, 2200px); padding: 14px 18px; border: 1px solid #d9e2ea; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; color: #19334b; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
 .uil-written-response { display: grid; gap: 7px; margin: 4px 0 12px; }
 .uil-written-response:last-child { margin-bottom: 0; }
 .uil-written-response textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid #cbd8e3; border-radius: 8px; background: #fff; color: #19334b; font: 14px/1.5 'DM Sans', sans-serif; }
 .uil-written-response textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-.uil-score-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: min(100%, 1440px); padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
+.uil-score-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: min(100%, 2200px); padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
 .uil-score-summary strong { margin-right: auto; color: var(--orange-text); }
 @media (max-width: 620px) {
   .uil-exam-header { align-items: stretch; flex-direction: column; gap: 9px; padding: 9px 12px; }
