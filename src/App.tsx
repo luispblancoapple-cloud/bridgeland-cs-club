@@ -682,6 +682,28 @@ function Header({user,onSignOut,onManage,isDev,page,navItems,navLabels,onNavigat
   );
 }
 
+function UILExamHeader({status}:any){
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{
+    if(!status||status.submitted)return;
+    const timer=window.setInterval(()=>setNow(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[status?.startedAt,status?.submitted]);
+  const remaining=status?Math.max(0,status.minutes*60-Math.floor((now-status.startedAt)/1000)):0;
+  const clock=`${Math.floor(remaining/60).toString().padStart(2,"0")}:${(remaining%60).toString().padStart(2,"0")}`;
+  return <header className="uil-exam-header">
+    <div className="uil-exam-heading">
+      <button type="button" className="uil-exit-test" onClick={status?.onBack}>← All UIL tests</button>
+      <div><strong>{status?`${status.year} · ${status.level}`:"Starting UIL test…"}</strong><span>Tap a bubble to answer; type in written responses.</span></div>
+    </div>
+    <div className="uil-exam-status">
+      <span className={`uil-exam-clock${remaining<300?" urgent":""}`}>{status?.submitted?"Submitted":`Time ${clock}`}</span>
+      <span className="uil-exam-answered">{status?`${status.answered}/${status.questions} answered`:"Preparing test"}</span>
+      {status?.submitted?<button type="button" className="uil-exam-submit secondary" onClick={status.reset}>New attempt</button>:<button type="button" className="uil-exam-submit" disabled={!status?.submit} onClick={status?.submit}>Submit test</button>}
+    </div>
+  </header>;
+}
+
 /* ---- FORUM PAGE ---- */
 function ForumPage({user,isGuest,isOfficer}:any){
   const [threads,setThreads]=useState<any[]>([]);
@@ -1035,6 +1057,8 @@ export default function App(){
   const [loading,setLoading]=useState(true);
   const [user,setUser]=useState<any>(null);
   const [page,setPage]=useState("home");
+  const [uilExamActive,setUilExamActive]=useState(false);
+  const [uilExamStatus,setUilExamStatus]=useState<any>(null);
   const [theme,setTheme]=useState<"light"|"dark">(()=>{
     try{return localStorage.getItem("bridgeland-cs-club-theme")==="dark"?"dark":"light";}catch{return "light";}
   });
@@ -1259,10 +1283,10 @@ export default function App(){
 
   return(
     <div className="app-shell" data-theme={theme}>
-      <Header {...headerProps}/>
+      {uilExamActive?<UILExamHeader status={uilExamStatus}/>:<Header {...headerProps}/>}
       {(()=>{
         const pinned=(data.announcements||[]).find((a:any)=>String(a.id)===String(data.pinnedAnnouncementId));
-        if(!pinned||dismissedAnnId===pinned.id||page==="announcements")return null;
+        if(!pinned||dismissedAnnId===pinned.id||page==="announcements"||uilExamActive)return null;
         const latest=pinned;
         return(
           <div style={{background:C.orange1f,borderBottom:`1px solid ${C.orange44}`,padding:"10px 1rem",display:"flex",alignItems:"center",gap:12}}>
@@ -1331,7 +1355,7 @@ export default function App(){
 
         {page==="about"&&<AboutPage data={data} upd={upd} isOfficer={isOfficer}/>}
 
-        {page==="uilPrep"&&<UILPrepPage username={user.username||"guest"}/>}
+        {page==="uilPrep"&&<UILPrepPage username={user.username||"guest"} onExamModeChange={setUilExamActive} onRunnerStatus={setUilExamStatus}/>}
 
         {page==="announcements"&&(
           <div>
@@ -2487,10 +2511,17 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem,headerProps}:any
   );
 }
 
-function UILPrepPage({username}:any){
+function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
   const [section,setSection]=useState<"guide"|"tests">("guide");
   const [activeTest,setActiveTest]=useState<any>(null);
-  if(activeTest)return <UILTestRunner key={activeTest.id} test={activeTest} username={username} onBack={()=>setActiveTest(null)}/>;
+  const leaveTest=()=>{onRunnerStatus?.(null);onExamModeChange?.(false);setActiveTest(null);};
+  const startTest=(test:any)=>{
+    const attemptStartedAt=Date.now();
+    setActiveTest({...test,attemptStartedAt});
+    onExamModeChange?.(true);
+    onRunnerStatus?.({year:test.year,level:test.level,startedAt:attemptStartedAt,minutes:test.minutes,answered:0,questions:test.questions,submitted:false,onBack:leaveTest});
+  };
+  if(activeTest)return <UILTestRunner key={activeTest.id} test={activeTest} username={username} onBack={leaveTest} onStatusChange={onRunnerStatus}/>;
   return(
     <div>
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:18}}>
@@ -2540,7 +2571,7 @@ function UILPrepPage({username}:any){
                   <div key={test.id} style={{...cardS,margin:0,padding:"14px 16px"}}>
                     <div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>
                     <div style={{fontSize:12,color:C.muted,marginBottom:12}}>40 questions · 45 minutes</div>
-                    <Btn onClick={()=>setActiveTest(test)}>Take test →</Btn>
+                    <Btn onClick={()=>startTest(test)}>Take test →</Btn>
                   </div>
                 ))}
               </div>
@@ -2578,13 +2609,15 @@ function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSel
   </div>;
 }
 
-function UILTestRunner({test,username,onBack}:any){
+function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
   const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
     try{const saved=localStorage.getItem(storageKey);if(saved)return JSON.parse(saved);}catch{/* Start a fresh attempt if saved progress cannot be read. */}
-    return makeAttempt();
+    return {...makeAttempt(),startedAt:test.attemptStartedAt||Date.now()};
   });
+  const submitRef=useRef<any>(null),resetRef=useRef<any>(null),backRef=useRef<any>(onBack);
+  backRef.current=onBack;
   const [now,setNow]=useState(Date.now()),[pdfPages,setPdfPages]=useState<any[]>([]),[pdfError,setPdfError]=useState("");
   const paper=(UIL_PAPER_MAP as any)[test.id];
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(attempt));}catch{/* Keep the current attempt available in memory. */}},[storageKey,attempt]);
@@ -2630,12 +2663,12 @@ function UILTestRunner({test,username,onBack}:any){
   const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
   const submit=()=>{if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;setAttempt((a:any)=>({...a,submittedAt:Date.now()}));};
   const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser."))setAttempt(makeAttempt());};
-  const formatTime=(seconds:number)=>`${Math.floor(seconds/60).toString().padStart(2,"0")}:${(seconds%60).toString().padStart(2,"0")}`;
+  submitRef.current=submit;resetRef.current=reset;
+  useEffect(()=>{
+    onStatusChange?.({year:test.year,level:test.level,startedAt:attempt.startedAt,minutes:test.minutes,answered,questions:test.questions,submitted:!!attempt.submittedAt,onBack:()=>backRef.current?.(),submit:()=>submitRef.current?.(),reset:()=>resetRef.current?.()});
+  },[onStatusChange,test.year,test.level,test.minutes,test.questions,attempt.startedAt,attempt.submittedAt,answered]);
+  useEffect(()=>()=>onStatusChange?.(null),[onStatusChange]);
   return <div className="uil-test-runner">
-    <div className="uil-paper-toolbar">
-      <div><OutBtn onClick={onBack} style={{marginBottom:7}}>← All UIL tests</OutBtn><h2 style={{margin:0}}>{test.year} · {test.level}</h2></div>
-      <div className="uil-paper-status"><Tag c={remaining<300?C.red:C.green}>{attempt.submittedAt?"Submitted":`Time ${formatTime(remaining)}`}</Tag><span style={{fontSize:13,color:C.muted}}>{answered}/{test.questions} answered</span>{!attempt.submittedAt?<Btn onClick={submit}>Submit test</Btn>:<SecBtn onClick={reset}>New attempt</SecBtn>}</div>
-    </div>
     {pdfError?<div role="alert" className="uil-paper-error">Unable to open the student test packet. {pdfError}</div>:!pdfPages.length?<div className="uil-paper-loading">Loading the test…</div>:<div className="uil-paper-scroll" aria-label={`${test.year} ${test.level} UIL test paper`}>
       {pdfPages.map((page:any,index:number)=>{
         const written=test.writtenQuestions?.filter((n:number)=>paper.written?.[n]?.page===index)||[];
