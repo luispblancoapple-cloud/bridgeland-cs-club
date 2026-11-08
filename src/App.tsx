@@ -2586,6 +2586,7 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
 
 function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSelect}:any){
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  const pageRef=useRef<HTMLDivElement|null>(null);
   useEffect(()=>{
     const canvas=canvasRef.current,container=canvas?.parentElement;
     if(!canvas||!container)return;
@@ -2625,12 +2626,25 @@ function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSel
     return()=>{disposed=true;intersection?.disconnect();resize?.disconnect();renderTask?.cancel();};
   },[page]);
   const choices=Object.entries(paper.choices||{}).flatMap(([question,items]:any)=>(items||[]).filter((choice:any)=>choice.page===pageNumber).map((choice:any)=>({question:Number(question),...choice}))).filter((choice:any)=>!test.writtenQuestions?.includes(choice.question));
-  return <div className="uil-paper-page" style={{aspectRatio:`${paper.width}/${paper.height}`}} aria-label={`Test page ${pageNumber+1}`}>
+  const selectNearest=(event:any,choice:any)=>{
+    if(event.detail===0){onSelect(choice.question,choice.letter);return;}
+    const bounds=pageRef.current?.getBoundingClientRect();
+    if(!bounds||!bounds.width||!bounds.height){onSelect(choice.question,choice.letter);return;}
+    const x=(event.clientX-bounds.left)/bounds.width*paper.width;
+    const y=(event.clientY-bounds.top)/bounds.height*paper.height;
+    const nearest=choices.reduce((best:any,item:any)=>{
+      const dx=item.x+item.w/2-x,dy=item.y+item.h/2-y;
+      const bestDx=best.x+best.w/2-x,bestDy=best.y+best.h/2-y;
+      return dx*dx+dy*dy<bestDx*bestDx+bestDy*bestDy?item:best;
+    },choice);
+    onSelect(nearest.question,nearest.letter);
+  };
+  return <div ref={pageRef} className="uil-paper-page" style={{aspectRatio:`${paper.width}/${paper.height}`}} aria-label={`Test page ${pageNumber+1}`}>
     <canvas ref={canvasRef} className="uil-paper-canvas"/>
     {choices.map((choice:any)=>{
       const detail=result?.details?.[choice.question-1],selected=answers?.[choice.question]===choice.letter;
       const state=submitted&&selected?(detail?.correct?" correct":" incorrect"):"";
-      return <button key={`${choice.question}-${choice.letter}`} type="button" className={`uil-paper-bubble${selected?" selected":""}${state}`} style={{left:`${(choice.x+choice.w/2)/paper.width*100}%`,top:`${(choice.y+choice.h/2)/paper.height*100}%`}} aria-label={`Question ${choice.question}, choice ${choice.letter}${selected?", selected":""}`} aria-pressed={selected} disabled={submitted} onClick={()=>onSelect(choice.question,choice.letter)}>{choice.letter}</button>;
+      return <button key={`${choice.question}-${choice.letter}`} type="button" className={`uil-paper-bubble${selected?" selected":""}${state}`} style={{left:`${(choice.x+choice.w/2)/paper.width*100}%`,top:`${(choice.y+choice.h/2)/paper.height*100}%`}} aria-label={`Question ${choice.question}, choice ${choice.letter}${selected?", selected":""}`} aria-pressed={selected} disabled={submitted} onClick={(event:any)=>selectNearest(event,choice)}><span>{choice.letter}</span></button>;
     })}
   </div>;
 }

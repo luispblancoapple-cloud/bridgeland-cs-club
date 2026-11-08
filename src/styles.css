@@ -284,14 +284,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-exam-submit.secondary { border-color: var(--line); color: var(--text); background: var(--surface); }
 .uil-exam-submit:disabled { opacity: .65; cursor: wait; }
 .uil-paper-scroll { display: grid; justify-items: center; gap: 18px; width: 100%; padding: 2px 0 24px; }
-.uil-paper-page { position: relative; container-type: inline-size; width: min(100%, 2200px); overflow: hidden; background: #fff; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
-.uil-paper-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-.uil-paper-bubble { position: absolute; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: clamp(9px, 1.8cqw, 22px); height: clamp(9px, 1.8cqw, 22px); padding: 0; transform: translate(-50%, -50%); border: 2px solid var(--blue-text); border-radius: 50%; background: rgba(226, 246, 255, .98); color: #173c52; box-shadow: 0 1px 5px rgba(11, 18, 32, .28); font: 800 clamp(6px, 1.1cqw, 12px)/1 'DM Sans', sans-serif; cursor: pointer; }
-.uil-paper-bubble:hover:not(:disabled) { z-index: 2; border-color: var(--orange-text); background: var(--orange); box-shadow: 0 2px 9px rgba(11, 18, 32, .32); transform: translate(-50%, -50%) scale(1.16); }
-.uil-paper-bubble:focus-visible { z-index: 2; outline: 3px solid var(--blue); outline-offset: 2px; }
-.uil-paper-bubble.selected { border: 2px solid var(--orange-text); background: var(--orange); color: #182b3b; }
-.uil-paper-bubble.correct { border-color: #18875d; background: #37b782; color: #fff; }
-.uil-paper-bubble.incorrect { border-color: #c44545; background: #df6868; color: #fff; }
+.uil-paper-page { position: relative; isolation: isolate; container-type: inline-size; width: min(100%, 2200px); overflow: hidden; background: #fff; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
+.uil-paper-canvas { position: absolute; z-index: 0; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
+.uil-paper-bubble { position: absolute; z-index: 2; display: inline-flex; align-items: center; justify-content: center; width: clamp(24px, 2.8cqw, 36px); height: clamp(24px, 2.8cqw, 36px); padding: 0; transform: translate(-50%, -50%); border: 0; border-radius: 50%; background: transparent; color: #94521f; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.uil-paper-bubble::before { position: absolute; z-index: 0; width: clamp(6px, 1.6cqw, 26px); height: clamp(6px, 1.6cqw, 26px); border: 2px solid #ee9149; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #fff8f0 0%, #fce1c9 66%, #f8c28e 100%); box-shadow: 0 0 0 2px rgba(244, 162, 97, .18), 0 0 12px rgba(244, 145, 73, .48), inset 0 1px 2px rgba(255, 255, 255, .9); content: ''; pointer-events: none; transition: background .16s ease, box-shadow .16s ease, transform .16s ease; }
+.uil-paper-bubble span { position: relative; z-index: 1; color: inherit; font: 800 clamp(5px, 1cqw, 12px)/1 'DM Sans', sans-serif; pointer-events: none; }
+.uil-paper-bubble:hover:not(:disabled) { z-index: 3; }
+.uil-paper-bubble:hover:not(:disabled)::before { border-color: #cf6b29; background: #f4a261; box-shadow: 0 0 0 3px rgba(244, 162, 97, .25), 0 0 16px rgba(224, 119, 48, .68); transform: scale(1.12); }
+.uil-paper-bubble:focus-visible { z-index: 3; outline: 3px solid #d97932; outline-offset: 1px; }
+.uil-paper-bubble.selected { color: #fff; }
+.uil-paper-bubble.selected::before { border-color: #a84f19; background: #d97932; box-shadow: 0 0 0 2px rgba(244, 162, 97, .22), 0 0 14px rgba(199, 91, 26, .65), inset 0 1px 2px rgba(255, 255, 255, .22); }
+.uil-paper-bubble.correct { color: #fff; }
+.uil-paper-bubble.correct::before { border-color: #18875d; background: #37b782; }
+.uil-paper-bubble.incorrect { color: #fff; }
+.uil-paper-bubble.incorrect::before { border-color: #c44545; background: #df6868; }
 .uil-paper-bubble:disabled { cursor: default; }
 .uil-paper-loading, .uil-paper-error { width: min(100%, 2200px); padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: center; }
 .uil-paper-page-group { display: grid; justify-items: center; gap: 0; width: 100%; }
