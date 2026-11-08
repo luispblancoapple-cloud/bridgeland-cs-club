@@ -72,7 +72,7 @@ function showOnFirstVisit(key:string):boolean{
 }
 const DEV_ACCOUNT: any = { username:"LuisBlanco62",passwordHash:"d76b58cc21175bccfb07399a4531e3a0141dce781c16f4e96ed05e29c5452d5f",role:"developer",name:"Luis Blanco" };
 const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
-const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDfiOI_400x400.jpg";
+const LOGO_URL = "https://pbs.twimg.com/profile_images/941019066268971008/x4ZldzQq.jpg";
 
 const C = {
   bg:"var(--canvas)",bgCard:"var(--surface)",bgInput:"var(--surface-strong)",border:"var(--line)",
@@ -1179,7 +1179,7 @@ export default function App(){
       <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
       <main className="auth-stage">
         <aside className="auth-art auth-bear-art" aria-hidden="true">
-          <div className="auth-bear-orbit"><img src={LOGO_URL} alt="" onError={(e:any)=>e.target.style.display="none"}/></div>
+          <div className="auth-bear-orbit"><span className="auth-bear-placeholder">🐻</span><img src={LOGO_URL} alt="" onError={(e:any)=>e.target.style.display="none"}/></div>
           <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
           <span className="auth-art-spark auth-spark-one">✳</span>
           <span className="auth-art-spark auth-spark-two">＋</span>
