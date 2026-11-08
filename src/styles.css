@@ -196,12 +196,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, .9fr) minmax(680px, 840px) minmax(0, .9fr);
-  align-items: center;
+  align-items: start;
   gap: clamp(28px, 3vw, 56px);
   width: min(100% - 48px, 2200px);
   min-height: calc(100vh - 82px);
   margin: 0 auto;
-  padding: 16px 0 24px;
+  padding: clamp(28px, 5vh, 56px) 0 24px;
 }
 .auth-stage::before, .auth-stage::after {
   position: absolute;
@@ -321,7 +321,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 1500px) {
-  .auth-stage { display: flex; align-items: center; justify-content: center; width: min(100% - 40px, 840px); min-height: calc(100vh - 82px); padding: 20px 0 28px; }
+  .auth-stage { display: flex; align-items: flex-start; justify-content: center; width: min(100% - 40px, 840px); min-height: calc(100vh - 82px); padding: clamp(24px, 5vh, 48px) 0 28px; }
   .auth-art { display: none; }
   .auth-wrap { max-width: 840px; }
 }
@@ -340,7 +340,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .header-actions { gap: 6px; }
   .site-nav { margin-top: 2px; }
   .nav-link { padding: 8px 10px; }
-  .auth-stage { width: min(100% - 28px, 680px); min-height: calc(100vh - 66px); padding: 20px 0 28px; }
+  .auth-stage { width: min(100% - 28px, 680px); min-height: calc(100vh - 66px); padding: 24px 0 28px; }
   .auth-panel { padding: 1.4rem !important; }
 }
 @media (prefers-reduced-motion: reduce) {
