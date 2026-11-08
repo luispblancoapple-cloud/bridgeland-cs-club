@@ -1147,7 +1147,7 @@ export default function App(){
     <div className="app-shell" data-theme={theme}>
       <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
       <div className="auth-wrap">
-        <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Make something brilliant.</h1><p>Learn, build, and solve problems with the Bridgeland CS community.</p></div>
+        <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Learn. Practice. Build.</h1></div>
         {!showReg?(
           <div style={cardS}>
             <h2 style={{fontSize:17,fontWeight:600,marginTop:0,marginBottom:16}}>Sign in</h2>
