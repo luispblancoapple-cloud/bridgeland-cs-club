@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
 import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
+import UIL_PAPER_MAP from "./uilPaperMap.json";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyAJqtx5OvDPp4Xr_rTvq4QvlJYWgj0MtFs",
@@ -2527,7 +2530,7 @@ function UILPrepPage({username}:any){
         <>
           <div style={{...cardS,marginBottom:16,background:C.blue18,border:`1px solid ${C.blue33}`}}>
             <strong>Official UIL Computer Science Written tests · 2022–2026</strong>
-            <div style={{fontSize:13,color:C.muted,marginTop:4}}>Choose a round to open the UIL-hosted packet and use the digital answer sheet. UIL packets include the answer key after the questions; this is an honor-system practice mode, so avoid scrolling to the key until you finish.</div>
+            <div style={{fontSize:13,color:C.muted,marginTop:4}}>Choose a round to open the original test. Scroll through the pages and select answers directly on the paper.</div>
           </div>
           {[2026,2025,2024,2023,2022].map(year=>(
             <section key={year} style={{marginBottom:20}}>
@@ -2537,10 +2540,7 @@ function UILPrepPage({username}:any){
                   <div key={test.id} style={{...cardS,margin:0,padding:"14px 16px"}}>
                     <div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>
                     <div style={{fontSize:12,color:C.muted,marginBottom:12}}>40 questions · 45 minutes</div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                      <Btn onClick={()=>setActiveTest(test)}>Take test →</Btn>
-                      <a className="uil-source-link" href={test.pdfUrl} target="_blank" rel="noreferrer">Official PDF ↗</a>
-                    </div>
+                    <Btn onClick={()=>setActiveTest(test)}>Take test →</Btn>
                   </div>
                 ))}
               </div>
@@ -2553,139 +2553,97 @@ function UILPrepPage({username}:any){
   );
 }
 
+function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSelect}:any){
+  const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  useEffect(()=>{
+    let renderTask:any=null;
+    const render=async()=>{
+      const canvas=canvasRef.current;if(!canvas)return;
+      const viewport=page.getViewport({scale:1.35});
+      const context=canvas.getContext("2d");if(!context)return;
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      renderTask=page.render({canvasContext:context,viewport});
+      try{await renderTask.promise;}catch(error:any){if(error?.name!=="RenderingCancelledException")console.error("UIL packet page render failed",error);}
+    };
+    void render();return()=>renderTask?.cancel();
+  },[page]);
+  const choices=Object.entries(paper.choices||{}).flatMap(([question,items]:any)=>(items||[]).filter((choice:any)=>choice.page===pageNumber).map((choice:any)=>({question:Number(question),...choice}))).filter((choice:any)=>!test.writtenQuestions?.includes(choice.question));
+  return <div className="uil-paper-page" style={{aspectRatio:`${paper.width}/${paper.height}`}} aria-label={`Test page ${pageNumber+1}`}>
+    <canvas ref={canvasRef} className="uil-paper-canvas"/>
+    {choices.map((choice:any)=>{
+      const detail=result?.details?.[choice.question-1],selected=answers?.[choice.question]===choice.letter;
+      const state=submitted&&selected?(detail?.correct?" correct":" incorrect"):"";
+      return <button key={`${choice.question}-${choice.letter}`} type="button" className={`uil-paper-bubble${selected?" selected":""}${state}`} style={{left:`${(choice.x+choice.w/2)/paper.width*100}%`,top:`${(choice.y+choice.h/2)/paper.height*100}%`}} aria-label={`Question ${choice.question}, choice ${choice.letter}${selected?", selected":""}`} aria-pressed={selected} disabled={submitted} onClick={()=>onSelect(choice.question,choice.letter)}>{choice.letter}</button>;
+    })}
+  </div>;
+}
+
 function UILTestRunner({test,username,onBack}:any){
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
-  const viewerUrl=`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(test.pdfUrl)}`;
   const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
     try{const saved=localStorage.getItem(storageKey);if(saved)return JSON.parse(saved);}catch{/* Start a fresh attempt if saved progress cannot be read. */}
     return makeAttempt();
   });
-  const [now,setNow]=useState(Date.now());
+  const [now,setNow]=useState(Date.now()),[pdfPages,setPdfPages]=useState<any[]>([]),[pdfError,setPdfError]=useState("");
+  const paper=(UIL_PAPER_MAP as any)[test.id];
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(attempt));}catch{/* Keep the current attempt available in memory. */}},[storageKey,attempt]);
   useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
-  const remaining=Math.max(0,test.minutes*60-Math.floor((now-attempt.startedAt)/1000));
   useEffect(()=>{
-    if(remaining===0&&!attempt.submittedAt)setAttempt((a:any)=>({...a,submittedAt:Date.now()}));
-  },[remaining,attempt.submittedAt]);
-  const modeFor=(n:number)=>attempt.modes?.[n]||(test.writtenQuestions?.includes(n)?"written":"choice");
-  const isAnswered=(n:number)=>modeFor(n)==="choice"?!!attempt.answers?.[n]:!!String(attempt.written?.[n]||"").trim();
+    let active=true,task:any=null;
+    import("pdfjs-dist").then(async(pdfjsLib:any)=>{
+      if(!active)return;
+      pdfjsLib.GlobalWorkerOptions.workerSrc=pdfWorkerUrl;
+      task=pdfjsLib.getDocument({url:`/uil-packets/${test.id}.pdf`});
+      const pdf=await task.promise;
+      const pages=await Promise.all(Array.from({length:pdf.numPages},(_,i)=>pdf.getPage(i+1)));
+      if(active)setPdfPages(pages);
+    }).catch((error:any)=>{if(active)setPdfError(error?.message||"The test packet could not be opened.");});
+    return()=>{active=false;task?.destroy?.();};
+  },[test.id]);
+  const remaining=Math.max(0,test.minutes*60-Math.floor((now-attempt.startedAt)/1000));
+  useEffect(()=>{if(remaining===0&&!attempt.submittedAt)setAttempt((a:any)=>({...a,submittedAt:Date.now()}));},[remaining,attempt.submittedAt]);
+  const isWritten=(n:number)=>test.writtenQuestions?.includes(n);
+  const isAnswered=(n:number)=>isWritten(n)?!!String(attempt.written?.[n]||"").trim():!!attempt.answers?.[n];
   const answered=Array.from({length:test.questions},(_,i)=>i+1).filter(isAnswered).length;
-  const baseLetters="ABCDE".split("");
-  const isOtherChoice=(n:number)=>attempt.otherChoice?.[n]??!!(attempt.answers?.[n]&&!baseLetters.includes(attempt.answers[n]));
   const updateAnswer=(n:number,value:string)=>setAttempt((a:any)=>({...a,answers:{...a.answers,[n]:value}}));
   const updateWritten=(n:number,value:string)=>setAttempt((a:any)=>({...a,written:{...a.written,[n]:value}}));
-  const updateMode=(n:number,value:string)=>setAttempt((a:any)=>({...a,modes:{...(a.modes||{}),[n]:value}}));
-  const toggleOtherChoice=(n:number)=>{
-    const other=isOtherChoice(n);
-    if(other&&attempt.answers?.[n]&&!baseLetters.includes(attempt.answers[n])&&!window.confirm("Switch to A–E bubbles and clear this other-letter answer?"))return;
-    setAttempt((a:any)=>{
-      const next=!other;
-      const answers={...a.answers};
-      if(!next&&answers[n]&&!baseLetters.includes(answers[n]))delete answers[n];
-      return{...a,answers,otherChoice:{...(a.otherChoice||{}),[n]:next}};
-    });
-  };
-  const updateOtherAnswer=(n:number,value:string)=>updateAnswer(n,value.toUpperCase().replace(/[^F-K]/g,"").slice(0,1));
-  const toggleFlag=(n:number)=>setAttempt((a:any)=>({...a,flags:{...(a.flags||{}),[n]:!a.flags?.[n]}}));
   const normalizeScoreResponse=(value:any)=>{
     let normalized=String(value??"").trim().toUpperCase().replace(/^(?:O|BIG\s*O)\((.*)\)$/,"$1").replace(/[\s,;]/g,"");
     while(normalized.startsWith("(")&&normalized.endsWith(")")){
       let depth=0,wrapsWholeValue=true;
-      for(let i=0;i<normalized.length;i++){
-        if(normalized[i]==="(")depth++;
-        if(normalized[i]===")")depth--;
-        if(depth===0&&i<normalized.length-1){wrapsWholeValue=false;break;}
-      }
-      if(!wrapsWholeValue)break;
-      normalized=normalized.slice(1,-1);
+      for(let i=0;i<normalized.length;i++){if(normalized[i]==="(")depth++;if(normalized[i]===")")depth--;if(depth===0&&i<normalized.length-1){wrapsWholeValue=false;break;}}
+      if(!wrapsWholeValue)break;normalized=normalized.slice(1,-1);
     }
     return normalized;
   };
   const gradeAttempt=()=>{
-    let correct=0,incorrect=0,unanswered=0;
-    const details:Array<{question:number,response:string,expected:string,correct:boolean,answered:boolean}> = [];
+    let correct=0,incorrect=0,unanswered=0;const details:Array<{correct:boolean,answered:boolean}> = [];
     for(let n=1;n<=test.questions;n++){
-      const response=modeFor(n)==="choice"?attempt.answers?.[n]:attempt.written?.[n];
-      const expected=String(test.answerKey?.[n-1]||"");
-      const answered=!!String(response??"").trim();
-      const matches=answered&&expected.split("||").some((answer:string)=>normalizeScoreResponse(response)===normalizeScoreResponse(answer));
-      if(!answered)unanswered++;
-      else if(matches)correct++;
-      else incorrect++;
-      details.push({question:n,response:String(response??""),expected,correct:!!matches,answered});
+      const response=isWritten(n)?attempt.written?.[n]:attempt.answers?.[n],expected=String(test.answerKey?.[n-1]||""),hasAnswer=!!String(response??"").trim();
+      const matches=hasAnswer&&expected.split("||").some((answer:string)=>normalizeScoreResponse(response)===normalizeScoreResponse(answer));
+      if(!hasAnswer)unanswered++;else if(matches)correct++;else incorrect++;
+      details.push({correct:!!matches,answered:hasAnswer});
     }
     return{correct,incorrect,unanswered,points:correct*test.pointsCorrect-incorrect*test.penaltyIncorrect,details};
   };
   const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
-  const submit=()=>{
-    if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;
-    setAttempt((a:any)=>({...a,submittedAt:Date.now()}));
-  };
-  const reset=()=>{
-    if(!window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser."))return;
-    setAttempt(makeAttempt());
-  };
+  const submit=()=>{if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;setAttempt((a:any)=>({...a,submittedAt:Date.now()}));};
+  const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser."))setAttempt(makeAttempt());};
   const formatTime=(seconds:number)=>`${Math.floor(seconds/60).toString().padStart(2,"0")}:${(seconds%60).toString().padStart(2,"0")}`;
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:14}}>
-        <div><OutBtn onClick={onBack} style={{marginBottom:7}}>← All UIL tests</OutBtn><h2 style={{margin:0}}>{test.year} · {test.level}</h2></div>
-        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <Tag c={remaining<300?C.red:C.green}>{attempt.submittedAt?"Submitted":`Time ${formatTime(remaining)}`}</Tag>
-          <span style={{fontSize:13,color:C.muted}}>{answered}/{test.questions} answered</span>
-          <a className="uil-source-link" href={test.pdfUrl} target="_blank" rel="noreferrer">Open UIL packet ↗</a>
-        </div>
-      </div>
-      <div className="uil-runner-grid">
-        <div style={{...cardS,margin:0,padding:0,overflow:"hidden"}}>
-          <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`,fontSize:13,fontWeight:700}}>Official test packet</div>
-          <iframe title={`${test.year} UIL Computer Science Written ${test.level}`} src={viewerUrl} className="uil-pdf-frame" loading="eager"/>
-          <div style={{padding:"10px 14px",fontSize:12,color:C.muted}}>The original UIL packet is displayed above, including its answer key after the test. This app leaves UIL pages intact and does not gate the key; use the practice mode on an honor basis. If the viewer does not load, use “Open UIL packet.”</div>
-        </div>
-        <div style={{...cardS,margin:0}}>
-          <div style={{position:"sticky",top:90,zIndex:2,background:C.bg88,paddingBottom:10,borderBottom:`1px solid ${C.border}`,marginBottom:8}}>
-            <h3 style={{margin:"0 0 4px",fontSize:17}}>Digital answer sheet</h3>
-            <div style={{fontSize:12,color:C.muted}}>Choose an A–E bubble, or use “Other letter” when the question offers F–K. Switch any question to type-in for a written response. Known written-response questions start as type-in. Answers save on this browser.</div>
-          </div>
-          <div className="uil-answer-list">
-            <div className="uil-question-nav" aria-label="Jump to question">
-              {Array.from({length:test.questions},(_,i)=>i+1).map(n=><button key={n} type="button" onClick={()=>document.getElementById(`uil-q-${test.id}-${n}`)?.scrollIntoView({behavior:"smooth",block:"center"})} aria-label={`Go to question ${n}${attempt.flags?.[n]?", flagged":""}`} style={{width:31,height:31,border:`1px solid ${attempt.flags?.[n]?C.orange:C.border}`,borderRadius:8,background:isAnswered(n)?C.green18:attempt.flags?.[n]?C.orange18:C.bgInput,color:isAnswered(n)?C.green:attempt.flags?.[n]?C.orangeText:C.muted,fontWeight:700,fontSize:11,cursor:"pointer"}}>{n}</button>)}
-            </div>
-            {Array.from({length:test.questions},(_,i)=>i+1).map(n=>(
-              <div key={n} id={`uil-q-${test.id}-${n}`} className="uil-answer-row">
-                <strong style={{width:25,flexShrink:0,fontSize:13}}>{n}.</strong>
-                {result&&<span aria-label={result.details[n-1].correct?"Correct":result.details[n-1].answered?"Incorrect":"Unanswered"} title={result.details[n-1].expected?`Correct answer: ${result.details[n-1].expected}`:""} style={{width:14,flexShrink:0,fontSize:12,fontWeight:800,color:result.details[n-1].correct?C.green:result.details[n-1].answered?C.red:C.muted}}>{result.details[n-1].correct?"✓":result.details[n-1].answered?"×":"–"}</span>}
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,flexWrap:"wrap"}}>
-                    {modeFor(n)==="choice"&&!isOtherChoice(n)?(
-                      <div role="radiogroup" aria-label={`Question ${n}`} className="uil-answer-choices">
-                        {baseLetters.map(letter=><label key={letter} className={`uil-answer-bubble${attempt.answers[n]===letter?" selected":""}`}><input type="radio" name={`${test.id}-q${n}`} value={letter} checked={attempt.answers[n]===letter} onChange={()=>updateAnswer(n,letter)} disabled={!!attempt.submittedAt}/>{letter}</label>)}
-                      </div>
-                    ):modeFor(n)==="choice"?(
-                      <input aria-label={`Question ${n} other answer letter`} inputMode="text" maxLength={1} pattern="[F-Kf-k]" value={attempt.answers[n]||""} onChange={(e:any)=>updateOtherAnswer(n,e.target.value)} disabled={!!attempt.submittedAt} placeholder="F–K" style={{width:64,padding:"7px 9px",border:`1px solid ${C.border}`,borderRadius:8,background:C.bgInput,color:C.text,fontWeight:700,textAlign:"center"}}/>
-                    ):(
-                      <textarea aria-label={`Question ${n} written response`} value={attempt.written[n]||""} onChange={(e:any)=>updateWritten(n,e.target.value)} disabled={!!attempt.submittedAt} rows={2} style={{flex:1,minWidth:160,resize:"vertical",padding:"7px 9px",border:`1px solid ${C.border}`,borderRadius:8,background:C.bgInput,color:C.text}} placeholder="Type your response"/>
-                    )}
-                    {modeFor(n)==="choice"&&<button type="button" disabled={!!attempt.submittedAt} onClick={()=>toggleOtherChoice(n)} style={{border:0,background:"transparent",color:C.blueText,padding:"4px 2px",fontSize:10,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{isOtherChoice(n)?"A–E bubbles":"Other letter"}</button>}
-                    <button type="button" aria-pressed={modeFor(n)==="written"} disabled={!!attempt.submittedAt} onClick={()=>updateMode(n,modeFor(n)==="choice"?"written":"choice")} style={{border:`1px solid ${C.border}`,borderRadius:7,background:C.bgCard,color:C.muted,padding:"5px 8px",fontSize:11,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{modeFor(n)==="choice"?"Type-in":"Use bubbles"}</button>
-                    <button type="button" aria-pressed={!!attempt.flags?.[n]} disabled={!!attempt.submittedAt} onClick={()=>toggleFlag(n)} style={{border:`1px solid ${attempt.flags?.[n]?C.orange:C.border}`,borderRadius:7,background:attempt.flags?.[n]?C.orange18:C.bgCard,color:attempt.flags?.[n]?C.orangeText:C.muted,padding:"5px 8px",fontSize:11,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{attempt.flags?.[n]?"⚑ Flagged":"⚐ Flag"}</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
-            {!attempt.submittedAt?<Btn onClick={submit}>Submit responses</Btn>:<div role="status" style={{alignSelf:"center",fontSize:13,color:C.green,fontWeight:700}}>Submitted · score calculated automatically</div>}
-            <SecBtn onClick={reset}>New attempt</SecBtn>
-          </div>
-          {attempt.submittedAt&&result&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginTop:14}}>
-            {[["Score",`${result.points} pts`,C.orangeText],["Correct",result.correct,C.green],["Incorrect",result.incorrect,C.red],["Unanswered",result.unanswered,C.muted]].map(([label,value,color]:any)=><div key={label} style={{padding:"11px 12px",borderRadius:10,border:`1px solid ${C.border}`,background:C.bgInput}}><div style={{fontSize:11,color:C.muted,fontWeight:700}}>{label}</div><strong style={{display:"block",marginTop:3,fontSize:20,color}}>{value}</strong></div>)}
-          </div>}
-        </div>
-      </div>
+  return <div className="uil-test-runner">
+    <div className="uil-paper-toolbar">
+      <div><OutBtn onClick={onBack} style={{marginBottom:7}}>← All UIL tests</OutBtn><h2 style={{margin:0}}>{test.year} · {test.level}</h2></div>
+      <div className="uil-paper-status"><Tag c={remaining<300?C.red:C.green}>{attempt.submittedAt?"Submitted":`Time ${formatTime(remaining)}`}</Tag><span style={{fontSize:13,color:C.muted}}>{answered}/{test.questions} answered</span>{!attempt.submittedAt?<Btn onClick={submit}>Submit test</Btn>:<SecBtn onClick={reset}>New attempt</SecBtn>}</div>
     </div>
-  );
+    {pdfError?<div role="alert" className="uil-paper-error">Unable to open the student test packet. {pdfError}</div>:!pdfPages.length?<div className="uil-paper-loading">Loading the test…</div>:<div className="uil-paper-scroll" aria-label={`${test.year} ${test.level} UIL test paper`}>
+      {pdfPages.map((page:any,index:number)=>{
+        const written=test.writtenQuestions?.filter((n:number)=>paper.written?.[n]?.page===index)||[];
+        return <div key={index} className="uil-paper-page-group"><UILPaperPage page={page} pageNumber={index} paper={paper} test={test} answers={attempt.answers} result={result} submitted={!!attempt.submittedAt} onSelect={updateAnswer}/>{written.length>0&&<div className="uil-written-paper-fragment" aria-label={`Written responses for test page ${index+1}`}>{written.map((n:number)=><label key={n} className="uil-written-response"><strong>Question {n} · written response</strong><textarea aria-label={`Question ${n} written response`} value={attempt.written[n]||""} disabled={!!attempt.submittedAt} onChange={(e:any)=>updateWritten(n,e.target.value)} placeholder="Type your response" rows={2}/></label>)}</div>}</div>;
+      })}
+      {result&&<div className="uil-score-summary" role="status"><strong>Score: {result.points} points</strong><span>{result.correct} correct</span><span>{result.incorrect} incorrect</span><span>{result.unanswered} unanswered</span></div>}
+    </div>}
+  </div>;
 }
 
 function CodingUnitView({unit,data,user,onBack,onQuestion,headerProps}:any){
