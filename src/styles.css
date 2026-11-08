@@ -203,6 +203,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .app-shell h1, .app-shell h2, .app-shell h3, .app-shell h4 { font-family: Manrope, 'DM Sans', sans-serif; letter-spacing: -.025em; }
 .app-shell a { color: var(--navy); }
 :root[data-theme="dark"] .app-shell a { color: var(--blue); }
+.uil-runner-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 14px; align-items: start; }
+.app-shell .uil-source-link { display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--blue-text); background: var(--surface-strong); font-size: 13px; font-weight: 600; text-decoration: none; }
+.app-shell .uil-source-link:hover { border-color: var(--blue); background: var(--blue-18); }
+.uil-pdf-frame { display: block; width: 100%; height: calc(100vh - 260px); min-height: 520px; border: 0; background: var(--surface-strong); }
+.uil-answer-list { max-height: calc(100vh - 245px); overflow: auto; padding-right: 3px; }
+.uil-question-nav { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 0 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.uil-answer-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.uil-answer-choices { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.uil-answer-bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 25px; height: 27px; padding: 0 4px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; }
+.uil-answer-bubble input { position: absolute; opacity: 0; pointer-events: none; }
+.uil-answer-bubble:focus-within { outline: 3px solid color-mix(in srgb, var(--blue) 78%, white); outline-offset: 2px; }
+.uil-answer-bubble.selected { color: var(--orange-text); border-color: var(--orange); background: var(--orange-18); }
+@media (max-width: 900px) {
+  .uil-runner-grid { grid-template-columns: minmax(0, 1fr); }
+  .uil-pdf-frame { height: 65vh; min-height: 380px; }
+  .uil-answer-list { max-height: none; overflow: visible; }
+}
+@media (max-width: 480px) {
+  .uil-answer-row { align-items: flex-start; }
+  .uil-answer-choices { gap: 4px; }
+  .uil-answer-bubble { min-width: 27px; }
+}
 
 @media (max-width: 1120px) {
   .site-header { grid-template-columns: 1fr auto; gap: 4px 14px; }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
+import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAJqtx5OvDPp4Xr_rTvq4QvlJYWgj0MtFs",
@@ -1034,9 +1035,7 @@ export default function App(){
   const [theme,setTheme]=useState<"light"|"dark">(()=>{
     try{return localStorage.getItem("bridgeland-cs-club-theme")==="dark"?"dark":"light";}catch{return "light";}
   });
-  const [showWelcome,setShowWelcome]=useState(false);
   const [showUnitsHint,setShowUnitsHint]=useState(false);
-  const welcomeVisitKey=useRef<string|null>(null);
   const unitsHintVisitKey=useRef<string|null>(null);
   const [loginForm,setLoginForm]=useState({username:"",password:""});
   const [loginErr,setLoginErr]=useState("");
@@ -1114,17 +1113,6 @@ export default function App(){
   const nextMeetingDate=nextMeeting.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
 
   useEffect(()=>{
-    if(!user?.username||page!=="home"){
-      setShowWelcome(false);
-      return;
-    }
-    const key=`bridgeland-cs-club:welcome-seen:${user.username}`;
-    if(welcomeVisitKey.current===key)return;
-    welcomeVisitKey.current=key;
-    setShowWelcome(showOnFirstVisit(key));
-  },[page,user?.username]);
-
-  useEffect(()=>{
     if(!user?.username||isGuest||page!=="problems"){
       setShowUnitsHint(false);
       return;
@@ -1170,9 +1158,9 @@ export default function App(){
     setUser(nu);setRegErr("");
   };
 
-  const allNav=["about","announcements","events","resources","problems","coding","leaderboard","forum"];
+  const allNav=["about","announcements","events","resources","uilPrep","problems","coding","leaderboard","forum"];
   const navItems=isOfficer?[...allNav,"officers"]:allNav;
-  const navLabels:any={home:"Home",about:"About Us",announcements:"Announcements",events:"Events",resources:"Resources",problems:"Problems",coding:"Coding",leaderboard:"Leaderboard",forum:"Forum",officers:"Officers"};
+  const navLabels:any={home:"Home",about:"About Us",announcements:"Announcements",events:"Events",resources:"Resources",uilPrep:"UIL Prep",problems:"Problems",coding:"Coding",leaderboard:"Leaderboard",forum:"Forum",officers:"Officers"};
   const clearActiveView=()=>{setActiveCoding(null);setActiveCodingUnit(null);setActiveProblem(null);setActiveUnit(null);};
   const goHome=()=>{setPage("home");clearActiveView();};
   const navigateTo=(nextPage:string)=>{setPage(nextPage);clearActiveView();};
@@ -1274,7 +1262,7 @@ export default function App(){
             <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
               <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover",flexShrink:0}} onError={(e:any)=>e.target.style.display="none"}/>
               <div>
-                {showWelcome&&<h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>}
+                <h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
                 <p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
                 <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
                   <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Next meeting · {nextMeetingDate} · 2:40–3:50 PM</span>
@@ -1322,6 +1310,8 @@ export default function App(){
         )}
 
         {page==="about"&&<AboutPage data={data} upd={upd} isOfficer={isOfficer}/>}
+
+        {page==="uilPrep"&&<UILPrepPage username={user.username||"guest"}/>}
 
         {page==="announcements"&&(
           <div>
@@ -1491,8 +1481,14 @@ export default function App(){
               </div>
             ):(
               <>
-                <div style={{background:C.orange18,border:`1px solid ${C.orange33}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>
-                  💡 Select a language and write your solution.
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",background:C.orange18,border:`1px solid ${C.orange33}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>
+                  <span>💡 Select a language and write your solution.</span>
+                  <div role="group" aria-label="Difficulty key" style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontSize:12,fontWeight:700}}>Difficulty:</span>
+                    <Tag c={diffColor.Easy}>Easy</Tag>
+                    <Tag c={diffColor.Medium}>Medium</Tag>
+                    <Tag c={diffColor.Hard}>Hard</Tag>
+                  </div>
                 </div>
                 {(data.codingUnits||[]).length>0&&<>
                   <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Units</h3>
@@ -1503,10 +1499,13 @@ export default function App(){
                     return(
                       <div key={cu.id} style={{...cardS,cursor:"pointer"}} onClick={()=>setActiveCodingUnit(cu.id)}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                          <div style={{flex:1}}>
-                            <div style={{fontWeight:700,fontSize:16,marginBottom:4,display:"flex",alignItems:"center",gap:8}}>{cu.title}{cu.level&&<Tag c={cu.level==="advanced"?C.red:C.green}>{cu.level==="advanced"?"Advanced":"Novice"}</Tag>}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:16,marginBottom:4,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                              <span>{cu.title}</span>
+                              {cu.level&&<Tag c={cu.level==="advanced"?C.red:C.green}>{cu.level==="advanced"?"Advanced":"Novice"}</Tag>}
+                              {qs.map((q:any)=><Tag key={q.id} c={diffColor[q.difficulty]||C.muted}>{q.title}</Tag>)}
+                            </div>
                             {cu.desc&&<div style={{fontSize:13,color:C.muted,marginBottom:10}}>{cu.desc}</div>}
-                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{qs.map((q:any)=><Tag key={q.id} c={diffColor[q.difficulty]}>{q.title}</Tag>)}</div>
                           </div>
                           <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
                             <div style={{fontSize:22,fontWeight:700,color:C.orangeText}}>{solved}/{qs.length}</div>
@@ -2463,6 +2462,194 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem,headerProps}:any
             <div style={{flex:1,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontWeight:600}}>{p.title}</span><Tag c={diffColor[p.difficulty]}>{p.difficulty}</Tag>{p.level&&<Tag c={p.level==="advanced"?C.red:C.green}>{p.level==="advanced"?"Advanced":"Novice"}</Tag>}</div>
           </div>
         );})}
+      </div>
+    </div>
+  );
+}
+
+function UILPrepPage({username}:any){
+  const [section,setSection]=useState<"guide"|"tests">("guide");
+  const [activeTest,setActiveTest]=useState<any>(null);
+  if(activeTest)return <UILTestRunner key={activeTest.id} test={activeTest} username={username} onBack={()=>setActiveTest(null)}/>;
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:18}}>
+        <div><div style={{fontSize:12,fontWeight:700,color:C.orangeText,textTransform:"uppercase",letterSpacing:1}}>Contest preparation</div><h2 style={{margin:"3px 0 4px"}}>UIL Computer Science Prep</h2><div style={{fontSize:14,color:C.muted}}>Step-by-step Java topics and official UIL Written practice tests.</div></div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <SecBtn onClick={()=>setSection("guide")} style={{background:section==="guide"?C.orange18:C.bgInput,color:section==="guide"?C.orangeText:C.muted,borderColor:section==="guide"?C.orange:C.border,fontWeight:700}}>Topic Guide</SecBtn>
+          <SecBtn onClick={()=>setSection("tests")} style={{background:section==="tests"?C.orange18:C.bgInput,color:section==="tests"?C.orangeText:C.muted,borderColor:section==="tests"?C.orange:C.border,fontWeight:700}}>Practice Tests</SecBtn>
+        </div>
+      </div>
+      {section==="guide"?(
+        <>
+          <div style={{...cardS,borderLeft:`4px solid ${C.orange}`,marginBottom:18}}>
+            <h3 style={{margin:"0 0 5px"}}>The first 15: make these routine</h3>
+            <p style={{fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.6}}>UIL identifies these question types as the opening section of the written test. Use the steps and watch-outs to practice a reliable solving process; official test questions remain unchanged.</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,350px),1fr))",gap:10}}>
+              {FIRST_15_TIPS.map((tip:any)=>(
+                <details key={tip.title} style={{border:`1px solid ${C.border}`,borderRadius:10,background:C.bgCard,padding:"11px 13px"}}>
+                  <summary style={{fontWeight:700,cursor:"pointer",lineHeight:1.45}}>{tip.title}</summary>
+                  <ol style={{fontSize:13,color:C.text,paddingLeft:20,lineHeight:1.55,margin:"10px 0"}}>{tip.steps.map((step:string,i:number)=><li key={i} style={{marginBottom:5}}>{step}</li>)}</ol>
+                  <div style={{fontSize:12,color:C.orangeText,background:C.orange18,borderRadius:7,padding:"7px 9px"}}><strong>Watch for:</strong> {tip.watch}</div>
+                </details>
+              ))}
+            </div>
+          </div>
+          <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:12}}>
+            {UIL_TOPIC_UNITS.map((unit:any)=>(
+              <div key={unit.title} style={{...cardS,margin:0}}>
+                <h3 style={{margin:"0 0 10px",fontSize:16}}>{unit.title}</h3>
+                <ul style={{margin:0,paddingLeft:19,color:C.muted,fontSize:13,lineHeight:1.65}}>{unit.topics.map((topic:string)=><li key={topic} style={{marginBottom:4}}>{topic}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+          <p style={{fontSize:12,color:C.muted,lineHeight:1.55,marginTop:14}}>Dynamic programming is listed for the programming portion, not the written test. Topic guide based on the UIL 2026–27 Java topic list.</p>
+        </>
+      ):(
+        <>
+          <div style={{...cardS,marginBottom:16,background:C.blue18,border:`1px solid ${C.blue33}`}}>
+            <strong>Official UIL Computer Science Written tests · 2022–2026</strong>
+            <div style={{fontSize:13,color:C.muted,marginTop:4}}>Choose a round to open the UIL-hosted packet and use the digital answer sheet. UIL packets include the answer key after the questions; this is an honor-system practice mode, so avoid scrolling to the key until you finish.</div>
+          </div>
+          {[2026,2025,2024,2023,2022].map(year=>(
+            <section key={year} style={{marginBottom:20}}>
+              <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"0 0 10px"}}>{year} tests</h3>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,220px),1fr))",gap:10}}>
+                {UIL_TESTS.filter((test:any)=>test.year===year).map((test:any)=>(
+                  <div key={test.id} style={{...cardS,margin:0,padding:"14px 16px"}}>
+                    <div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>
+                    <div style={{fontSize:12,color:C.muted,marginBottom:12}}>40 questions · 45 minutes</div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <Btn onClick={()=>setActiveTest(test)}>Take test →</Btn>
+                      <a className="uil-source-link" href={test.pdfUrl} target="_blank" rel="noreferrer">Official PDF ↗</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+          <div style={{fontSize:12,color:C.muted}}>Source: <a href="https://www.uiltexas.org/academics/page/high-school-academic-study-materials" target="_blank" rel="noreferrer">UIL High School Academic Study Materials</a>. Test packets remain hosted by UIL.</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function UILTestRunner({test,username,onBack}:any){
+  const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
+  const viewerUrl=`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(test.pdfUrl)}`;
+  const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,submittedAt:null as number|null});
+  const [attempt,setAttempt]=useState<any>(()=>{
+    try{const saved=localStorage.getItem(storageKey);if(saved)return JSON.parse(saved);}catch{/* Start a fresh attempt if saved progress cannot be read. */}
+    return makeAttempt();
+  });
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(attempt));}catch{/* Keep the current attempt available in memory. */}},[storageKey,attempt]);
+  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  const remaining=Math.max(0,test.minutes*60-Math.floor((now-attempt.startedAt)/1000));
+  useEffect(()=>{
+    if(remaining===0&&!attempt.submittedAt)setAttempt((a:any)=>({...a,submittedAt:Date.now()}));
+  },[remaining,attempt.submittedAt]);
+  const modeFor=(n:number)=>attempt.modes?.[n]||(test.writtenQuestions?.includes(n)?"written":"choice");
+  const isAnswered=(n:number)=>modeFor(n)==="choice"?!!attempt.answers?.[n]:!!String(attempt.written?.[n]||"").trim();
+  const answered=Array.from({length:test.questions},(_,i)=>i+1).filter(isAnswered).length;
+  const baseLetters="ABCDE".split("");
+  const isOtherChoice=(n:number)=>attempt.otherChoice?.[n]??!!(attempt.answers?.[n]&&!baseLetters.includes(attempt.answers[n]));
+  const updateAnswer=(n:number,value:string)=>setAttempt((a:any)=>({...a,answers:{...a.answers,[n]:value}}));
+  const updateWritten=(n:number,value:string)=>setAttempt((a:any)=>({...a,written:{...a.written,[n]:value}}));
+  const updateMode=(n:number,value:string)=>setAttempt((a:any)=>({...a,modes:{...(a.modes||{}),[n]:value}}));
+  const toggleOtherChoice=(n:number)=>{
+    const other=isOtherChoice(n);
+    if(other&&attempt.answers?.[n]&&!baseLetters.includes(attempt.answers[n])&&!window.confirm("Switch to A–E bubbles and clear this other-letter answer?"))return;
+    setAttempt((a:any)=>{
+      const next=!other;
+      const answers={...a.answers};
+      if(!next&&answers[n]&&!baseLetters.includes(answers[n]))delete answers[n];
+      return{...a,answers,otherChoice:{...(a.otherChoice||{}),[n]:next}};
+    });
+  };
+  const updateOtherAnswer=(n:number,value:string)=>updateAnswer(n,value.toUpperCase().replace(/[^F-K]/g,"").slice(0,1));
+  const toggleFlag=(n:number)=>setAttempt((a:any)=>({...a,flags:{...(a.flags||{}),[n]:!a.flags?.[n]}}));
+  const updateSelfScore=(field:string,value:string)=>setAttempt((a:any)=>({...a,selfScore:{...(a.selfScore||{}),[field]:value}}));
+  const submit=()=>{
+    if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;
+    setAttempt((a:any)=>({...a,submittedAt:Date.now()}));
+  };
+  const reset=()=>{
+    if(!window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser."))return;
+    setAttempt(makeAttempt());
+  };
+  const formatTime=(seconds:number)=>`${Math.floor(seconds/60).toString().padStart(2,"0")}:${(seconds%60).toString().padStart(2,"0")}`;
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:14}}>
+        <div><OutBtn onClick={onBack} style={{marginBottom:7}}>← All UIL tests</OutBtn><h2 style={{margin:0}}>{test.year} · {test.level}</h2></div>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <Tag c={remaining<300?C.red:C.green}>{attempt.submittedAt?"Submitted":`Time ${formatTime(remaining)}`}</Tag>
+          <span style={{fontSize:13,color:C.muted}}>{answered}/{test.questions} answered</span>
+          <a className="uil-source-link" href={test.pdfUrl} target="_blank" rel="noreferrer">Open UIL packet ↗</a>
+        </div>
+      </div>
+      <div className="uil-runner-grid">
+        <div style={{...cardS,margin:0,padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`,fontSize:13,fontWeight:700}}>Official test packet</div>
+          <iframe title={`${test.year} UIL Computer Science Written ${test.level}`} src={viewerUrl} className="uil-pdf-frame" loading="eager"/>
+          <div style={{padding:"10px 14px",fontSize:12,color:C.muted}}>The original UIL packet is displayed above, including its answer key after the test. This app leaves UIL pages intact and does not gate the key; use the practice mode on an honor basis. If the viewer does not load, use “Open UIL packet.”</div>
+        </div>
+        <div style={{...cardS,margin:0}}>
+          <div style={{position:"sticky",top:90,zIndex:2,background:C.bg88,paddingBottom:10,borderBottom:`1px solid ${C.border}`,marginBottom:8}}>
+            <h3 style={{margin:"0 0 4px",fontSize:17}}>Digital answer sheet</h3>
+            <div style={{fontSize:12,color:C.muted}}>Choose an A–E bubble, or use “Other letter” when the question offers F–K. Switch any question to type-in for a written response. Known written-response questions start as type-in. Answers save on this browser.</div>
+          </div>
+          <div className="uil-answer-list">
+            <div className="uil-question-nav" aria-label="Jump to question">
+              {Array.from({length:test.questions},(_,i)=>i+1).map(n=><button key={n} type="button" onClick={()=>document.getElementById(`uil-q-${test.id}-${n}`)?.scrollIntoView({behavior:"smooth",block:"center"})} aria-label={`Go to question ${n}${attempt.flags?.[n]?", flagged":""}`} style={{width:31,height:31,border:`1px solid ${attempt.flags?.[n]?C.orange:C.border}`,borderRadius:8,background:isAnswered(n)?C.green18:attempt.flags?.[n]?C.orange18:C.bgInput,color:isAnswered(n)?C.green:attempt.flags?.[n]?C.orangeText:C.muted,fontWeight:700,fontSize:11,cursor:"pointer"}}>{n}</button>)}
+            </div>
+            {Array.from({length:test.questions},(_,i)=>i+1).map(n=>(
+              <div key={n} id={`uil-q-${test.id}-${n}`} className="uil-answer-row">
+                <strong style={{width:25,flexShrink:0,fontSize:13}}>{n}.</strong>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,flexWrap:"wrap"}}>
+                    {modeFor(n)==="choice"&&!isOtherChoice(n)?(
+                      <div role="radiogroup" aria-label={`Question ${n}`} className="uil-answer-choices">
+                        {baseLetters.map(letter=><label key={letter} className={`uil-answer-bubble${attempt.answers[n]===letter?" selected":""}`}><input type="radio" name={`${test.id}-q${n}`} value={letter} checked={attempt.answers[n]===letter} onChange={()=>updateAnswer(n,letter)} disabled={!!attempt.submittedAt}/>{letter}</label>)}
+                      </div>
+                    ):modeFor(n)==="choice"?(
+                      <input aria-label={`Question ${n} other answer letter`} inputMode="text" maxLength={1} pattern="[F-Kf-k]" value={attempt.answers[n]||""} onChange={(e:any)=>updateOtherAnswer(n,e.target.value)} disabled={!!attempt.submittedAt} placeholder="F–K" style={{width:64,padding:"7px 9px",border:`1px solid ${C.border}`,borderRadius:8,background:C.bgInput,color:C.text,fontWeight:700,textAlign:"center"}}/>
+                    ):(
+                      <textarea aria-label={`Question ${n} written response`} value={attempt.written[n]||""} onChange={(e:any)=>updateWritten(n,e.target.value)} disabled={!!attempt.submittedAt} rows={2} style={{flex:1,minWidth:160,resize:"vertical",padding:"7px 9px",border:`1px solid ${C.border}`,borderRadius:8,background:C.bgInput,color:C.text}} placeholder="Type your response"/>
+                    )}
+                    {modeFor(n)==="choice"&&<button type="button" disabled={!!attempt.submittedAt} onClick={()=>toggleOtherChoice(n)} style={{border:0,background:"transparent",color:C.blueText,padding:"4px 2px",fontSize:10,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{isOtherChoice(n)?"A–E bubbles":"Other letter"}</button>}
+                    <button type="button" aria-pressed={modeFor(n)==="written"} disabled={!!attempt.submittedAt} onClick={()=>updateMode(n,modeFor(n)==="choice"?"written":"choice")} style={{border:`1px solid ${C.border}`,borderRadius:7,background:C.bgCard,color:C.muted,padding:"5px 8px",fontSize:11,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{modeFor(n)==="choice"?"Type-in":"Use bubbles"}</button>
+                    <button type="button" aria-pressed={!!attempt.flags?.[n]} disabled={!!attempt.submittedAt} onClick={()=>toggleFlag(n)} style={{border:`1px solid ${attempt.flags?.[n]?C.orange:C.border}`,borderRadius:7,background:attempt.flags?.[n]?C.orange18:C.bgCard,color:attempt.flags?.[n]?C.orangeText:C.muted,padding:"5px 8px",fontSize:11,fontWeight:700,cursor:attempt.submittedAt?"default":"pointer",whiteSpace:"nowrap"}}>{attempt.flags?.[n]?"⚑ Flagged":"⚐ Flag"}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+            {!attempt.submittedAt?<Btn onClick={submit}>Submit responses</Btn>:<div role="status" style={{alignSelf:"center",fontSize:13,color:C.green,fontWeight:700}}>Responses saved. Compare with the key in the official packet.</div>}
+            <SecBtn onClick={reset}>New attempt</SecBtn>
+          </div>
+          {attempt.submittedAt&&(()=>{
+            const correct=Number(attempt.selfScore?.correct);
+            const incorrect=Number(attempt.selfScore?.incorrect);
+            const valid=attempt.selfScore?.correct!==undefined&&attempt.selfScore?.correct!==""&&attempt.selfScore?.incorrect!==undefined&&attempt.selfScore?.incorrect!==""&&Number.isInteger(correct)&&Number.isInteger(incorrect)&&correct>=0&&incorrect>=0&&correct+incorrect<=answered;
+            const unanswered=valid?test.questions-correct-incorrect:null;
+            return(
+              <div style={{marginTop:14,padding:12,borderRadius:10,border:`1px solid ${C.border}`,background:C.bgInput}}>
+                <strong style={{fontSize:13}}>Score your attempt</strong>
+                <div style={{fontSize:12,color:C.muted,margin:"4px 0 10px"}}>Check the official key and explanations in the packet, then enter your totals. Review accepted written answers carefully.</div>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
+                  {["correct","incorrect"].map(field=><label key={field} style={{fontSize:12,color:C.muted,fontWeight:700,textTransform:"capitalize"}}>{field}<input type="number" min="0" max={test.questions} value={attempt.selfScore?.[field]??""} onChange={(e:any)=>updateSelfScore(field,e.target.value)} style={{display:"block",width:100,marginTop:4,padding:"7px 8px",border:`1px solid ${C.border}`,borderRadius:7,background:C.bgCard,color:C.text}}/></label>)}
+                  {valid&&<div style={{fontSize:13,color:C.text}}>{unanswered} unanswered · <strong style={{fontSize:18,color:C.orangeText}}>{correct*test.pointsCorrect-incorrect*test.penaltyIncorrect} points</strong></div>}
+                </div>
+                {!valid&&attempt.selfScore?.correct!==undefined&&attempt.selfScore?.incorrect!==undefined&&attempt.selfScore?.correct!==""&&attempt.selfScore?.incorrect!==""&&<div style={{fontSize:12,color:C.red,marginTop:8}}>Enter whole-number totals that add up to no more than your {answered} answered questions.</div>}
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
