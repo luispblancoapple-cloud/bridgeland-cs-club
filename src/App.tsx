@@ -694,7 +694,7 @@ function UILExamHeader({status}:any){
   return <header className="uil-exam-header">
     <div className="uil-exam-heading">
       <button type="button" className="uil-exit-test" onClick={status?.onBack}>← All UIL tests</button>
-      <div><strong>{status?`${status.year} · ${status.level}`:"Starting UIL test…"}</strong><span>Tap a bubble to answer; type in written responses.</span></div>
+      <div><strong>{status?`${status.year} · ${status.level}`:"Starting UIL test…"}</strong><span>{status?.submitted?"Your submitted test diagnostics are below.":"Tap a bubble to answer; type in written responses."}</span></div>
     </div>
     <div className="uil-exam-status">
       <span className={`uil-exam-clock${remaining<300?" urgent":""}`}>{status?.submitted?"Submitted":`Time ${clock}`}</span>
@@ -2649,19 +2649,38 @@ function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSel
   </div>;
 }
 
+function formatUILDuration(milliseconds:number){
+  const seconds=Math.max(0,Math.floor(milliseconds/1000));
+  const minutes=Math.floor(seconds/60),remainder=seconds%60;
+  return `${minutes}m ${String(remainder).padStart(2,"0")}s`;
+}
+
 function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
-  const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,submittedAt:null as number|null});
+  const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,pageTimeMs:{} as Record<string,number>,pageTimingAvailable:true,pageTimingComplete:true,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
     try{const saved=localStorage.getItem(storageKey);if(saved)return JSON.parse(saved);}catch{/* Start a fresh attempt if saved progress cannot be read. */}
     return {...makeAttempt(),startedAt:test.attemptStartedAt||Date.now()};
   });
+  const attemptRef=useRef(attempt);
+  attemptRef.current=attempt;
+  const saveAttempt=(next:any)=>{
+    attemptRef.current=next;setAttempt(next);
+    try{localStorage.setItem(storageKey,JSON.stringify(next));}catch{/* Keep the current attempt available in memory. */}
+  };
   const submitRef=useRef<any>(null),resetRef=useRef<any>(null),backRef=useRef<any>(onBack);
+  const pageVisitRef=useRef({index:-1,startedAt:Date.now()});
+  const submittedRef=useRef(false);
+  submittedRef.current=!!attempt.submittedAt;
   backRef.current=onBack;
   const [now,setNow]=useState(Date.now()),[pdfPages,setPdfPages]=useState<any[]>([]),[pdfError,setPdfError]=useState("");
   const paper=(UIL_PAPER_MAP as any)[test.id];
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(attempt));}catch{/* Keep the current attempt available in memory. */}},[storageKey,attempt]);
-  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  useEffect(()=>{
+    if(attempt.submittedAt)return;
+    const timer=window.setInterval(()=>setNow(Date.now()),1000);
+    return()=>window.clearInterval(timer);
+  },[attempt.submittedAt]);
   useEffect(()=>{
     let active=true,task:any=null;
     import("pdfjs-dist").then(async(pdfjsLib:any)=>{
@@ -2675,12 +2694,55 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
     return()=>{active=false;task?.destroy?.();};
   },[test.id]);
   const remaining=Math.max(0,test.minutes*60-Math.floor((now-attempt.startedAt)/1000));
-  useEffect(()=>{if(remaining===0&&!attempt.submittedAt)setAttempt((a:any)=>({...a,submittedAt:Date.now()}));},[remaining,attempt.submittedAt]);
+  const trackPage=(index:number)=>{
+    if(submittedRef.current)return;
+    const now=Date.now(),visit=pageVisitRef.current;
+    if(visit.index===index)return;
+    pageVisitRef.current={index,startedAt:now};
+    if(visit.index>=0){
+      const elapsed=now-visit.startedAt;
+      const current=attemptRef.current;
+      saveAttempt({...current,pageTimeMs:{...(current.pageTimeMs||{}),[visit.index]:(current.pageTimeMs?.[visit.index]||0)+elapsed}});
+    }
+  };
+  const finishAttempt=()=>{
+    if(submittedRef.current)return;
+    const submittedAt=Date.now(),visit=pageVisitRef.current;
+    submittedRef.current=true;pageVisitRef.current={index:-1,startedAt:submittedAt};
+    const current=attemptRef.current,pageTimeMs={...(current.pageTimeMs||{})};
+    if(visit.index>=0)pageTimeMs[visit.index]=(pageTimeMs[visit.index]||0)+Math.max(0,submittedAt-visit.startedAt);
+    saveAttempt({...current,pageTimeMs,submittedAt});
+  };
+  useEffect(()=>{
+    if(!pdfPages.length||attempt.submittedAt)return;
+    if(typeof IntersectionObserver==="undefined"){
+      const current=attemptRef.current;
+      if(current.pageTimingAvailable!==false||current.pageTimingComplete!==false)saveAttempt({...current,pageTimingAvailable:false,pageTimingComplete:false});
+      return;
+    }
+    const current=attemptRef.current;
+    if(current.pageTimingAvailable!==true||current.pageTimingComplete===undefined)saveAttempt({...current,pageTimingAvailable:true,pageTimingComplete:current.pageTimingComplete??false});
+    const nodes=Array.from(document.querySelectorAll<HTMLElement>(".uil-paper-page-group"));
+    const indexByNode=new Map<Element,number>();nodes.forEach((node,index)=>indexByNode.set(node,index));
+    const ratios=new Map<number,number>();
+    let bestIndex=-1;
+    const observer=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{const index=indexByNode.get(entry.target);if(index!==undefined)ratios.set(index,entry.isIntersecting?entry.intersectionRatio:0);});
+      let bestRatio=0;bestIndex=-1;
+      ratios.forEach((ratio,index)=>{if(ratio>bestRatio){bestRatio=ratio;bestIndex=index;}});
+      trackPage(bestIndex);
+    },{threshold:[0,.1,.25,.4,.6,.8,1]});
+    const onVisibilityChange=()=>trackPage(document.hidden?-1:bestIndex);
+    nodes.forEach(node=>observer.observe(node));
+    document.addEventListener("visibilitychange",onVisibilityChange);
+    return()=>{observer.disconnect();document.removeEventListener("visibilitychange",onVisibilityChange);trackPage(-1);};
+  },[pdfPages.length,attempt.submittedAt]);
+  useEffect(()=>{if(remaining===0&&!attempt.submittedAt)finishAttempt();},[remaining,attempt.submittedAt]);
   const isWritten=(n:number)=>test.writtenQuestions?.includes(n);
   const isAnswered=(n:number)=>isWritten(n)?!!String(attempt.written?.[n]||"").trim():!!attempt.answers?.[n];
   const answered=Array.from({length:test.questions},(_,i)=>i+1).filter(isAnswered).length;
-  const updateAnswer=(n:number,value:string)=>setAttempt((a:any)=>({...a,answers:{...a.answers,[n]:value}}));
-  const updateWritten=(n:number,value:string)=>setAttempt((a:any)=>({...a,written:{...a.written,[n]:value}}));
+  const updateAnswer=(n:number,value:string)=>saveAttempt({...attemptRef.current,answers:{...(attemptRef.current.answers||{}),[n]:value}});
+  const updateWritten=(n:number,value:string)=>saveAttempt({...attemptRef.current,written:{...(attemptRef.current.written||{}),[n]:value}});
   const normalizeScoreResponse=(value:any)=>{
     let normalized=String(value??"").trim().toUpperCase().replace(/^(?:O|BIG\s*O)\((.*)\)$/,"$1").replace(/[\s,;]/g,"");
     while(normalized.startsWith("(")&&normalized.endsWith(")")){
@@ -2691,23 +2753,70 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
     return normalized;
   };
   const gradeAttempt=()=>{
-    let correct=0,incorrect=0,unanswered=0;const details:Array<{correct:boolean,answered:boolean}> = [];
+    let correct=0,incorrect=0,unanswered=0;const details:Array<any> = [];
     for(let n=1;n<=test.questions;n++){
       const response=isWritten(n)?attempt.written?.[n]:attempt.answers?.[n],expected=String(test.answerKey?.[n-1]||""),hasAnswer=!!String(response??"").trim();
       const matches=hasAnswer&&expected.split("||").some((answer:string)=>normalizeScoreResponse(response)===normalizeScoreResponse(answer));
       if(!hasAnswer)unanswered++;else if(matches)correct++;else incorrect++;
-      details.push({correct:!!matches,answered:hasAnswer});
+      details.push({question:n,correct:!!matches,answered:hasAnswer,response:String(response??""),expected});
     }
     return{correct,incorrect,unanswered,points:correct*test.pointsCorrect-incorrect*test.penaltyIncorrect,details};
   };
   const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
-  const submit=()=>{if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;setAttempt((a:any)=>({...a,submittedAt:Date.now()}));};
-  const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser."))setAttempt(makeAttempt());};
+  const submit=()=>{if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;finishAttempt();};
+  const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser.")){submittedRef.current=false;pageVisitRef.current={index:-1,startedAt:Date.now()};saveAttempt(makeAttempt());}};
   submitRef.current=submit;resetRef.current=reset;
   useEffect(()=>{
     onStatusChange?.({year:test.year,level:test.level,startedAt:attempt.startedAt,minutes:test.minutes,answered,questions:test.questions,submitted:!!attempt.submittedAt,onBack:()=>backRef.current?.(),submit:()=>submitRef.current?.(),reset:()=>resetRef.current?.()});
   },[onStatusChange,test.year,test.level,test.minutes,test.questions,attempt.startedAt,attempt.submittedAt,answered]);
   useEffect(()=>()=>onStatusChange?.(null),[onStatusChange]);
+  if(attempt.submittedAt&&result){
+    const missed=result.details.filter((detail:any)=>!detail.correct);
+    const right=result.details.filter((detail:any)=>detail.correct);
+    const legacyTiming=!Object.prototype.hasOwnProperty.call(attempt,"pageTimingAvailable");
+    const pageTimes=attempt.pageTimingAvailable===false?[]:Array.from({length:pdfPages.length},(_,index)=>({page:index+1,milliseconds:Object.prototype.hasOwnProperty.call(attempt.pageTimeMs||{},index)?attempt.pageTimeMs[index]:null,unvisited:attempt.pageTimingComplete&& !Object.prototype.hasOwnProperty.call(attempt.pageTimeMs||{},index)}));
+    const totalTime=attempt.submittedAt-attempt.startedAt;
+    const attempted=result.correct+result.incorrect;
+    const accuracy=attempted?Math.round(result.correct/attempted*100):0;
+    const accuracyLabel=attempted?`${accuracy}% accuracy on answered questions`:"No questions answered";
+    return <main className="uil-submitted-page" aria-labelledby="uil-submitted-title">
+      <section className="uil-result-hero">
+        <div className="uil-result-eyebrow">Test submitted</div>
+        <h1 id="uil-submitted-title">{test.year} · {test.level}</h1>
+        <div className="uil-result-total">{result.points}<span> points</span></div>
+        <p>{result.correct} of {test.questions} correct · {accuracyLabel} · {formatUILDuration(totalTime)} total time</p>
+      </section>
+      <section className="uil-result-stats" aria-label="Test summary">
+        <div><span>Correct</span><strong>{result.correct}</strong></div>
+        <div><span>Incorrect</span><strong>{result.incorrect}</strong></div>
+        <div><span>Unanswered</span><strong>{result.unanswered}</strong></div>
+        <div><span>Score</span><strong>{result.points} / {test.questions*test.pointsCorrect}</strong></div>
+      </section>
+      <section className="uil-result-card">
+        <h2>Time spent on each page</h2>
+        <div className="uil-page-time-grid">
+          {pageTimes.map(item=><div key={item.page}><span>Page {item.page}</span><strong>{item.milliseconds===null?(item.unvisited?"Not visited":"Not tracked"):formatUILDuration(item.milliseconds)}</strong></div>)}
+          {!pageTimes.length&&<p>{legacyTiming?"Page timing was not recorded for this saved attempt.":"Page timing is unavailable for this attempt."}</p>}
+        </div>
+      </section>
+      <section className="uil-result-card">
+        <h2>What to work on</h2>
+        {missed.length?<><p>Review these questions in your next study session, then revisit the related topics in the Topic Guide.</p><div className="uil-review-question-list">{missed.map((detail:any)=><span key={detail.question}>Question {detail.question}</span>)}</div></>:<p>You answered every question correctly. Keep practicing to stay sharp.</p>}
+      </section>
+      <section className="uil-result-card">
+        <h2>Question breakdown</h2>
+        <p className="uil-right-question-list"><strong>Questions correct:</strong> {right.length?right.map((detail:any)=>detail.question).join(", "):"None"}</p>
+        <div className="uil-question-results">
+          {result.details.map((detail:any)=><article key={detail.question} className={`uil-question-result${detail.correct?" correct":detail.answered?" incorrect":" unanswered"}`}>
+            <strong>Question {detail.question} · {detail.correct?"Correct":detail.answered?"Incorrect":"Unanswered"}</strong>
+            <span>Your answer: {detail.response||"—"}</span>
+            <span>Correct answer: {detail.expected?detail.expected.split("||").join(" or "):"Unavailable"}</span>
+          </article>)}
+        </div>
+      </section>
+      <button type="button" className="uil-results-back" onClick={onBack}>Back to UIL Prep</button>
+    </main>;
+  }
   return <div className="uil-test-runner">
     {pdfError?<div role="alert" className="uil-paper-error">Unable to open the student test packet. {pdfError}</div>:!pdfPages.length?<div className="uil-paper-loading">Loading the test…</div>:<div className="uil-paper-scroll" aria-label={`${test.year} ${test.level} UIL test paper`}>
       {pdfPages.map((page:any,index:number)=>{
