@@ -656,7 +656,7 @@ function Header({user,onSignOut,onManage,isDev,page,navItems,navLabels,onNavigat
           {user.role!=="member"&&user.role!=="guest"&&<Tag c={C.orange}>{user.role==="developer"?"Developer":"Officer"}</Tag>}
           {user.role==="guest"&&<Tag c={C.guest}>Guest</Tag>}
           {isDev&&<Btn color={C.orange} onClick={onManage} style={{padding:"7px 12px",fontSize:12}}>Members</Btn>}
-          <OutBtn onClick={onSignOut}>{"Sign out"}</OutBtn>
+          <OutBtn onClick={onSignOut}>{user.role==="guest"?"Sign in":"Sign out"}</OutBtn>
         </>}
       </div>
     </header>
