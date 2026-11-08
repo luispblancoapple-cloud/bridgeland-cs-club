@@ -647,7 +647,7 @@ function NotificationBell({user}:any){
 function Header({user,onSignOut,onManage,isDev,page,navItems,navLabels,onNavigate,onHome,theme,onToggleTheme}:any){
   return(
     <header className="site-header">
-      <button type="button" className="brand-link" onClick={onHome} aria-label="Bridgeland CS Club home">
+      <button type="button" className="brand-link" onClick={onHome} aria-label="Bridgeland CS Club home" aria-current={page==="home"?"page":undefined}>
         <img src={LOGO_URL} alt="" className="brand-logo" onError={(e:any)=>e.target.style.display="none"}/>
         <span>Bridgeland CS Club</span>
       </button>
@@ -1137,7 +1137,7 @@ export default function App(){
     setUser(nu);setRegErr("");
   };
 
-  const allNav=["home","about","announcements","events","resources","problems","coding","leaderboard","forum"];
+  const allNav=["about","announcements","events","resources","problems","coding","leaderboard","forum"];
   const navItems=isOfficer?[...allNav,"officers"]:allNav;
   const navLabels:any={home:"Home",about:"About Us",announcements:"Announcements",events:"Events",resources:"Resources",problems:"Problems",coding:"Coding",leaderboard:"Leaderboard",forum:"Forum",officers:"Officers"};
   const clearActiveView=()=>{setActiveCoding(null);setActiveCodingUnit(null);setActiveProblem(null);setActiveUnit(null);};
