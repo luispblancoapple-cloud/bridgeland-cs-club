@@ -69,11 +69,11 @@ const LOGO_URL = "https://pbs.twimg.com/profile_images/1405677956082630657/5PhDf
 const C = {
   bg:"var(--canvas)",bgCard:"var(--surface)",bgInput:"var(--surface-strong)",border:"var(--line)",
   navy:"var(--navy)",orange:"var(--orange)",orangeText:"var(--orange-text)",text:"var(--text)",muted:"var(--muted)",
-  green:"var(--green)",red:"var(--red)",blue:"var(--blue)",guest:"var(--guest)",purple:"var(--purple)",
+  green:"var(--green)",red:"var(--red)",blue:"var(--blue)",blueText:"var(--blue-text)",guest:"var(--guest)",purple:"var(--purple)",
   navy99:"var(--navy-60)",navycc:"var(--navy-78)",bg88:"var(--canvas-88)",
   green15:"var(--green-15)",green18:"var(--green-18)",green22:"var(--green-22)",
   green33:"var(--green-33)",green44:"var(--green-44)",red33:"var(--red-33)",red44:"var(--red-44)",
-  muted22:"var(--muted-22)",orange14:"var(--orange-14)",orange15:"var(--orange-15)",
+  muted22:"var(--muted-22)",blue18:"var(--blue-18)",blue33:"var(--blue-33)",orange14:"var(--orange-14)",orange15:"var(--orange-15)",
   orange18:"var(--orange-18)",orange1f:"var(--orange-12)",orange22:"var(--orange-22)",
   orange28:"var(--orange-28)",orange33:"var(--orange-33)",orange44:"var(--orange-44)",orange66:"var(--orange-66)",
   red15:"var(--red-15)",red18:"var(--red-18)",red22:"var(--red-22)",
@@ -1907,17 +1907,25 @@ function FolderNode({node,depth=0,upd,isOfficer}:any){
   const removeLink=(id:any)=>updateNode((f:any)=>({...f,items:(f.items||[]).filter((i:any)=>i.id!==id)}));
 
   const totalCount=(node.items||[]).length+(node.children||[]).length;
+  const folderAccent=depth===0?C.orangeText:C.blueText;
+  const folderTint=depth===0?C.orange18:C.blue18;
+  const folderBorder=depth===0?C.orange44:C.blue33;
 
   return(
     <div style={{marginBottom:depth===0?8:4}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:open?"10px 10px 0 0":"10px",cursor:"pointer",marginLeft:depth*12}}>
-        <span style={{fontSize:12,color:C.muted,transition:"transform 0.15s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
-        <span style={{fontWeight:600,flex:1,fontSize:depth===0?14:13}}>📁 {node.title}</span>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:folderTint,border:`1px solid ${folderBorder}`,borderLeft:`4px solid ${folderAccent}`,borderRadius:open?"12px 12px 0 0":"12px",cursor:"pointer",marginLeft:depth*12}}>
+        <span style={{fontSize:12,color:folderAccent,transition:"transform 0.15s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" style={{color:folderAccent,flexShrink:0}}>
+          <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="currentColor" opacity=".22"/>
+          <path d="M3 8.5h18l-1.5 8.7a2 2 0 0 1-2 1.7H5.5a2 2 0 0 1-2-1.7L3 8.5Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
+          <path d="M3.5 8V7a2 2 0 0 1 2-2h4.3l2 2H19a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
+        </svg>
+        <span style={{fontWeight:700,flex:1,fontSize:depth===0?15:14,color:C.text}}>{node.title}</span>
         <span style={{fontSize:11,color:C.muted}}>{totalCount} item{totalCount!==1?"s":""}</span>
         {isOfficer&&<button onClick={(e:any)=>{e.stopPropagation();removeFromParent();}} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,padding:"0 2px"}}>×</button>}
       </div>
       {open&&(
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:"8px 12px 10px",marginLeft:depth*12}}>
+        <div style={{background:C.bgCard,border:`1px solid ${folderBorder}`,borderTop:"none",borderLeft:`4px solid ${folderAccent}`,borderRadius:"0 0 12px 12px",padding:"10px 12px 12px",marginLeft:depth*12}}>
           {(node.children||[]).map((child:any)=>(
             <div key={child.id} style={{marginLeft:8,marginTop:6}}>
               <FolderNode node={child} depth={depth+1} upd={upd} isOfficer={isOfficer}/>

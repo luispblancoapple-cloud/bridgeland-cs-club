@@ -11,6 +11,7 @@
   --orange-text: #94521f;
   --accent-ink: #17324a;
   --blue: #8ecae6;
+  --blue-text: #386d87;
   --text: #17324a;
   --muted: #60788b;
   --green: #258760;
@@ -29,6 +30,8 @@
   --orange-33: rgba(244, 162, 97, .33);
   --orange-44: rgba(244, 162, 97, .44);
   --orange-66: rgba(244, 162, 97, .66);
+  --blue-18: rgba(142, 202, 230, .2);
+  --blue-33: rgba(142, 202, 230, .36);
   --green-15: rgba(37, 135, 96, .15);
   --green-18: rgba(37, 135, 96, .18);
   --green-22: rgba(37, 135, 96, .22);
@@ -59,6 +62,7 @@
   --orange-text: #f4a261;
   --accent-ink: #0b1220;
   --blue: #8ecae6;
+  --blue-text: #8ecae6;
   --text: #f8fafc;
   --muted: #b3c1cf;
   --green: #62d6a5;
@@ -77,6 +81,8 @@
   --orange-33: rgba(244, 162, 97, .33);
   --orange-44: rgba(244, 162, 97, .44);
   --orange-66: rgba(244, 162, 97, .66);
+  --blue-18: rgba(142, 202, 230, .16);
+  --blue-33: rgba(142, 202, 230, .3);
   --green-15: rgba(98, 214, 165, .15);
   --green-18: rgba(98, 214, 165, .18);
   --green-22: rgba(98, 214, 165, .22);
