@@ -1329,55 +1329,55 @@ export default function App(){
           </div>
         );
       })()}
-      <div style={{maxWidth:2200,margin:"0 auto",padding:"1.5rem clamp(1rem,2.3vw,2.25rem)"}}>
+      <div style={{maxWidth:2800,margin:"0 auto",padding:"2rem clamp(1.5rem,3vw,4rem)"}}>
 
         {page==="home"&&(
-          <div>
-            <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
+          <div className="home-dashboard">
+            <div className="home-welcome" style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:18,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:20}}>
               <img src={LOGO_URL} alt="logo" style={{width:60,height:60,borderRadius:"50%",border:`3px solid ${C.orange}`,objectFit:"cover",flexShrink:0}} onError={(e:any)=>e.target.style.display="none"}/>
               <div>
-                <h1 style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
-                <p style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
-                <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
-                  <span style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Next meeting · {nextMeetingDate} · 2:40–3:50 PM</span>
+                <h1 className="home-welcome-title" style={{fontFamily:"'Manrope','DM Sans',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 4px"}}>Welcome, {user.name?.split(" ")[0]||user.username}! 👋</h1>
+                <p className="home-welcome-subtitle" style={{color:C.muted,margin:"0 0 8px",fontSize:14}}>Bridgeland High School Computer Science Club · Cypress, TX</p>
+                <div className="home-meeting-wrap" style={{display:"inline-flex",alignItems:"center",gap:6,background:C.orange22,border:`1px solid ${C.orange44}`,borderRadius:8,padding:"6px 14px"}}>
+                  <span className="home-meeting" style={{fontSize:15,color:C.orangeText,fontWeight:700}}>📅 Next meeting · {nextMeetingDate} · 2:40–3:50 PM</span>
                 </div>
               </div>
             </div>
             {!isGuest&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
+              <div className="home-stats" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
                 {[["Members",data.users.length],["Events",data.events.length],["Units",(data.units||[]).length],["Problems Solved",myCompleted.length]].map(([l,v]:any)=>(
-                  <div key={l} style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem",textAlign:"center"}}>
-                    <div style={{fontSize:26,fontWeight:700,color:C.orangeText}}>{v}</div>
-                    <div style={{fontSize:13,color:C.muted,marginTop:4}}>{l}</div>
+                  <div key={l} className="home-stat" style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem",textAlign:"center"}}>
+                    <div className="home-stat-value" style={{fontSize:26,fontWeight:700,color:C.orangeText}}>{v}</div>
+                    <div className="home-stat-label" style={{fontSize:13,color:C.muted,marginTop:4}}>{l}</div>
                   </div>
                 ))}
               </div>
             )}
             {isGuest&&(<div style={{...cardS,borderLeft:`3px solid ${C.guest}`,marginBottom:24}}><div style={{fontWeight:600,fontSize:14,color:C.guest,marginBottom:4}}>Browsing as Guest</div><div style={{fontSize:13,color:C.muted}}>Sign in or create an account to do practice problems and appear on the leaderboard.</div></div>)}
             {!isGuest&&(
-              <><h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
-              <div style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
+              <><h3 className="home-section-heading" style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Top solvers</h3>
+              <div className="home-solvers-card" style={{...cardS,marginBottom:24,padding:"0.75rem 1rem"}}>
                 {[...(data.users||[])].filter((u:any)=>u.role==="member").map((u:any)=>{
                   const subs=((data.codingSubmissions||{})[u.username])||{};
                   const perfect=Object.values(subs).filter((s:any)=>s.score===100).length;
                   return{name:u.name||u.username,username:u.username,count:perfect};
                 }).sort((a:any,b:any)=>b.count-a.count).slice(0,3).map((u:any,i:number)=>( 
-                  <div key={u.username} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
-                    <div style={{width:26,height:26,borderRadius:"50%",background:i===0?C.orange44:i===1?C.orange28:C.muted22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orangeText:i===1?C.orangeText:C.muted,flexShrink:0}}>{i+1}</div>
-                    <div style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orangeText,marginLeft:6}}>you</span>}</div>
-                    <div style={{fontWeight:700,color:C.orangeText}}>{u.count}</div><div style={{fontSize:12,color:C.muted}}>solved</div>
+                  <div key={u.username} className="home-solver-row" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
+                    <div className="home-solver-rank" style={{width:26,height:26,borderRadius:"50%",background:i===0?C.orange44:i===1?C.orange28:C.muted22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:i===0?C.orangeText:i===1?C.orangeText:C.muted,flexShrink:0}}>{i+1}</div>
+                    <div className="home-solver-name" style={{flex:1,fontWeight:600,fontSize:14}}>{u.name}{u.username===user.username&&<span style={{fontSize:11,color:C.orangeText,marginLeft:6}}>you</span>}</div>
+                    <div className="home-solver-score" style={{fontWeight:700,color:C.orangeText}}>{u.count}</div><div className="home-solver-caption" style={{fontSize:12,color:C.muted}}>solved</div>
                   </div>
                 ))}
                 {(data.users||[]).filter((u:any)=>u.role==="member").length===0&&<p style={{color:C.muted,fontSize:13,margin:0}}>No solvers yet.</p>}
               </div></>
             )}
-            <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Latest announcements</h3>
+            <h3 className="home-section-heading" style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Latest announcements</h3>
             {(data.announcements||[]).slice(-2).reverse().map((a:any)=>(
-              <div key={a.id} style={{...cardS,borderLeft:`3px solid ${C.orange}`}}>
+              <div key={a.id} className="home-announcement-card" style={{...cardS,borderLeft:`3px solid ${C.orange}`}}>
                 {a.image&&<img src={a.image} alt="" style={{width:"100%",maxHeight:160,objectFit:"cover",borderRadius:6,marginBottom:10}}/>}
-                <div style={{fontWeight:600,marginBottom:4}}>{a.title}</div>
-                <div style={{fontSize:13,color:C.muted}}>{a.body}</div>
-                <div style={{fontSize:11,color:C.muted,marginTop:8}}>{a.date}</div>
+                <div className="home-announcement-title" style={{fontWeight:600,marginBottom:4}}>{a.title}</div>
+                <div className="home-announcement-body" style={{fontSize:13,color:C.muted}}>{a.body}</div>
+                <div className="home-announcement-date" style={{fontSize:11,color:C.muted,marginTop:8}}>{a.date}</div>
               </div>
             ))}
           </div>
