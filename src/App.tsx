@@ -2774,7 +2774,11 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const isWritten=(n:number)=>test.writtenQuestions?.includes(n);
   const isAnswered=(n:number)=>isWritten(n)?!!String(attempt.written?.[n]||"").trim():!!attempt.answers?.[n];
   const answered=Array.from({length:test.questions},(_,i)=>i+1).filter(isAnswered).length;
-  const updateAnswer=(n:number,value:string)=>saveAttempt({...attemptRef.current,answers:{...(attemptRef.current.answers||{}),[n]:value}});
+  const updateAnswer=(n:number,value:string)=>{
+    const answers={...(attemptRef.current.answers||{})};
+    if(answers[n]===value)delete answers[n];else answers[n]=value;
+    saveAttempt({...attemptRef.current,answers});
+  };
   const updateWritten=(n:number,value:string)=>saveAttempt({...attemptRef.current,written:{...(attemptRef.current.written||{}),[n]:value}});
   const normalizeScoreResponse=(value:any)=>{
     let normalized=String(value??"").trim().toUpperCase().replace(/^(?:O|BIG\s*O)\((.*)\)$/,"$1").replace(/[\s,;]/g,"");
