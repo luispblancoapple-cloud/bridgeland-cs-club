@@ -1329,7 +1329,8 @@ export default function App(){
           </div>
         );
       })()}
-      <div style={{maxWidth:2800,margin:"0 auto",padding:"2rem clamp(1.5rem,3vw,4rem)"}}>
+      <div className="app-content-scale">
+        <div className="app-content-inner">
 
         {page==="home"&&(
           <div className="home-dashboard">
@@ -1666,6 +1667,7 @@ export default function App(){
             ))}
           </div>
         )}
+        </div>
       </div>
       {modal&&<ModalBox modal={modal} setModal={setModal} data={data} upd={upd} isDev={isDev}/>}
       <BugReportBtn user={user}/>
@@ -1887,7 +1889,7 @@ function CodingView({cq,user,data,upd,onBack,headerProps}:any){
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       <Header {...headerProps}/>
-      <div style={{maxWidth:2200,margin:"0 auto",padding:"1.5rem clamp(1rem,2.3vw,2.25rem)"}}>
+      <div className="app-content-scale">
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding</OutBtn>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
           <span style={{fontWeight:700,fontSize:22}}>{cq.title}</span>
@@ -2519,7 +2521,7 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem,headerProps}:any
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       <Header {...headerProps}/>
-      <div style={{maxWidth:2200,margin:"0 auto",padding:"1.75rem clamp(1rem,2.3vw,2.25rem)"}}>
+      <div className="app-content-scale app-content-scale-roomy">
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Problems</OutBtn>
         <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
@@ -2893,7 +2895,7 @@ function CodingUnitView({unit,data,user,onBack,onQuestion,headerProps}:any){
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       <Header {...headerProps}/>
-      <div style={{maxWidth:2200,margin:"0 auto",padding:"1.75rem clamp(1rem,2.3vw,2.25rem)"}}>
+      <div className="app-content-scale app-content-scale-roomy">
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back to Coding Questions</OutBtn>
         <div style={{background:"linear-gradient(135deg,var(--hero-start),var(--hero-end))",borderRadius:12,padding:"1.5rem",marginBottom:24,border:`1px solid ${C.border}`}}>
           <h2 style={{margin:"0 0 6px",fontSize:22,fontFamily:"'Georgia',serif",fontWeight:400}}>{unit.title}</h2>
@@ -2963,7 +2965,7 @@ function ProblemView({prob,user,data,upd,onBack,unitCtx,onNext,headerProps}:any)
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       <Header {...headerProps}/>
-      <div style={{maxWidth:2200,margin:"0 auto",padding:"1.75rem clamp(1rem,2.3vw,2.25rem)"}}>
+      <div className="app-content-scale app-content-scale-roomy">
         <OutBtn onClick={onBack} style={{marginBottom:16}}>← Back</OutBtn>
         {unitCtx&&(
           <div style={{background:C.orange18,border:`1px solid ${C.orange33}`,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>
