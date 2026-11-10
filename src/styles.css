@@ -122,7 +122,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   outline: 3px solid color-mix(in srgb, var(--blue) 78%, white);
   outline-offset: 2px;
 }
-.app-shell { zoom: .8; width: 125%; min-height: 125vh; color: var(--text); background: transparent; }
+.app-shell { min-height: 100vh; color: var(--text); background: transparent; }
 .site-header {
   position: sticky;
   top: 0;
@@ -227,8 +227,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   align-items: stretch;
   gap: clamp(12px, 1.5vh, 20px) clamp(22px, 2.4vw, 52px);
   width: min(100% - 80px, 2400px);
-  min-height: calc(125vh - 154px);
-  min-height: calc(125svh - 154px);
+  min-height: calc(100vh - 154px);
+  min-height: calc(100svh - 154px);
   margin: 0 auto 0 max(24px, calc((100vw - 2400px) / 2 - 40px));
   padding: 10px 0 56px;
 }
@@ -498,7 +498,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .app-content-scale { zoom: 1; width: 100%; max-width: none; }
 }
 @media (max-width: 1100px) {
-  .auth-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; gap: 20px; width: min(100% - 40px, 960px); min-height: calc(125vh - 82px); min-height: calc(125svh - 82px); margin: 0 auto; padding: clamp(24px, 5vh, 48px) 0 28px; }
+  .auth-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; gap: 20px; width: min(100% - 40px, 960px); min-height: calc(100vh - 82px); min-height: calc(100svh - 82px); margin: 0 auto; padding: clamp(24px, 5vh, 48px) 0 28px; }
   .auth-wrap { grid-column: 1; grid-row: 1; max-width: 900px; margin: 0 auto; }
   .auth-art-group { grid-column: 1; grid-row: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .auth-bear-art { align-items: center; min-height: 300px; padding-top: 0; }
@@ -534,7 +534,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .site-nav { margin-top: 2px; }
   .nav-link { padding: 10px 12px; font-size: 18px; }
   .app-content-scale { zoom: 1; width: 100%; padding: 1rem .75rem; }
-  .auth-stage { width: min(100% - 28px, 680px); min-height: calc(125vh - 66px); min-height: calc(125svh - 66px); padding: 24px 0 28px; }
+  .auth-stage { width: min(100% - 28px, 680px); min-height: calc(100vh - 66px); min-height: calc(100svh - 66px); padding: 24px 0 28px; }
   .auth-stage { grid-template-rows: auto auto auto; gap: 18px; }
   .auth-art-group { grid-template-columns: 1fr; gap: 18px; }
   .auth-bear-art { min-height: 300px; }
