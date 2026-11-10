@@ -230,7 +230,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   min-height: calc(100vh - 154px);
   min-height: calc(100svh - 154px);
   margin: 0 auto 0 max(24px, calc((100vw - 2400px) / 2 - 40px));
-  padding: 10px 0 32px;
+  padding: 10px 0 56px;
 }
 .auth-stage::before, .auth-stage::after {
   position: absolute;
