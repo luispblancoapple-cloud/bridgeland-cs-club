@@ -380,7 +380,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-written-response:last-child { margin-bottom: 0; }
 .uil-written-response textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid #cbd8e3; border-radius: 8px; background: #fff; color: #19334b; font: 14px/1.5 'DM Sans', sans-serif; }
 .uil-written-response textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-.uil-score-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: min(100%, 2200px); padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
+.uil-score-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: min(94%, 1900px); padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
 .uil-score-summary strong { margin-right: auto; color: var(--orange-text); }
 .uil-prep-page { font-size: 15px; }
 .uil-prep-header { align-items: center !important; gap: clamp(20px, 2.4vw, 36px) !important; margin-bottom: 24px !important; }
@@ -482,6 +482,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .uil-exam-clock { padding: 6px 9px; font-size: 12px; }
   .uil-exam-submit { min-height: 34px; padding: 6px 12px; }
   .uil-paper-page { width: 96%; }
+  .uil-written-paper-fragment, .uil-score-summary { width: 96%; }
   .uil-score-summary { gap: 8px 12px; }
   .uil-submitted-page { gap: 14px; padding: 14px 0 22px; }
   .uil-benchmark-card { padding: 16px; }
