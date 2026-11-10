@@ -375,7 +375,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .uil-paper-bubble:disabled { cursor: default; }
 .uil-paper-loading, .uil-paper-error { width: min(100%, 2200px); padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: center; }
 .uil-paper-page-group { display: grid; justify-items: center; gap: 0; width: 100%; }
-.uil-written-paper-fragment { width: min(100%, 2200px); padding: 14px 18px; border: 1px solid #d9e2ea; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; color: #19334b; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
+.uil-written-paper-fragment { width: min(94%, 1900px); padding: 14px 18px; border: 1px solid #d9e2ea; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; color: #19334b; box-shadow: 0 8px 28px rgba(11, 18, 32, .15); }
 .uil-written-response { display: grid; gap: 7px; margin: 4px 0 12px; }
 .uil-written-response:last-child { margin-bottom: 0; }
 .uil-written-response textarea { width: 100%; resize: vertical; padding: 10px 12px; border: 1px solid #cbd8e3; border-radius: 8px; background: #fff; color: #19334b; font: 14px/1.5 'DM Sans', sans-serif; }
