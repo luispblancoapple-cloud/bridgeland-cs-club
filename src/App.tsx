@@ -2576,16 +2576,6 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
       </div>
       {section==="guide"?(
         <>
-          <h3 className="uil-topic-list-heading" style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,400px),1fr))",gap:16}}>
-            {UIL_TOPIC_UNITS.map((unit:any)=>(
-              <div key={unit.title} className="uil-topic-card" style={{...cardS,margin:0}}>
-                <h3 style={{margin:"0 0 10px",fontSize:16}}>{unit.title}</h3>
-                <ul style={{margin:0,paddingLeft:19,color:C.muted,fontSize:13,lineHeight:1.65}}>{unit.topics.map((topic:string)=><li key={topic} style={{marginBottom:4}}>{topic}</li>)}</ul>
-              </div>
-            ))}
-          </div>
-          <p style={{fontSize:12,color:C.muted,lineHeight:1.55,marginTop:14}}>Dynamic programming is listed for the programming portion, not the written test. Topic guide based on the UIL 2026–27 Java topic list.</p>
           <div className="uil-prep-feature" style={{...cardS,borderLeft:`4px solid ${C.orange}`,marginTop:28,marginBottom:18}}>
             <h3 style={{margin:"0 0 5px"}}>The first 15: make these routine</h3>
             <p style={{fontSize:13,color:C.muted,margin:"0 0 14px",lineHeight:1.6}}>UIL identifies these question types as the opening section of the written test. Use the steps and watch-outs to practice a reliable solving process; official test questions remain unchanged.</p>
@@ -2599,6 +2589,16 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
               ))}
             </div>
           </div>
+          <h3 className="uil-topic-list-heading" style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
+          <div className="uil-topic-grid" style={{display:"grid",gap:12}}>
+            {UIL_TOPIC_UNITS.map((unit:any)=>(
+              <div key={unit.title} className="uil-topic-card" style={{...cardS,margin:0}}>
+                <h3 style={{margin:"0 0 10px",fontSize:16}}>{unit.title}</h3>
+                <ul style={{margin:0,paddingLeft:19,color:C.muted,fontSize:13,lineHeight:1.65}}>{unit.topics.map((topic:string)=><li key={topic} style={{marginBottom:4}}>{topic}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+          <p style={{fontSize:12,color:C.muted,lineHeight:1.55,marginTop:14}}>Dynamic programming is listed for the programming portion, not the written test. Topic guide based on the UIL 2026–27 Java topic list.</p>
         </>
       ):(
         <>
