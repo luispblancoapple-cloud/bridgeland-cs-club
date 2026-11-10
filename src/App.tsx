@@ -1207,7 +1207,7 @@ export default function App(){
       <main className="auth-stage">
         <div className="auth-art-group" aria-hidden="true">
         <aside className="auth-art auth-bear-art" aria-hidden="true">
-          <div className="auth-bear-orbit"><img src="/bridgeland-bears-logo.png" alt="" /></div>
+          <div className="auth-bear-orbit"><img src={`${import.meta.env.BASE_URL}bridgeland-bears-logo.png`} alt="" /></div>
           <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
           <span className="auth-art-spark auth-spark-one">✳</span>
           <span className="auth-art-spark auth-spark-two">＋</span>
@@ -2742,7 +2742,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
     import("pdfjs-dist").then(async(pdfjsLib:any)=>{
       if(!active)return;
       pdfjsLib.GlobalWorkerOptions.workerSrc=pdfWorkerUrl;
-      task=pdfjsLib.getDocument({url:`/uil-packets/${test.id}.pdf`});
+      task=pdfjsLib.getDocument({url:`${import.meta.env.BASE_URL}uil-packets/${test.id}.pdf`});
       const pdf=await task.promise;
       const pages=await Promise.all(Array.from({length:pdf.numPages},(_,i)=>pdf.getPage(i+1)));
       if(active)setPdfPages(pages);
