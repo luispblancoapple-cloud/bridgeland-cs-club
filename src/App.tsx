@@ -1205,12 +1205,23 @@ export default function App(){
     <div className="app-shell" data-theme={theme}>
       <Header theme={theme} onToggleTheme={()=>setTheme(t=>t==="light"?"dark":"light")} onHome={()=>setShowReg(false)}/>
       <main className="auth-stage">
+        <div className="auth-art-group" aria-hidden="true">
         <aside className="auth-art auth-bear-art" aria-hidden="true">
           <div className="auth-bear-orbit"><img src="/bridgeland-bears-logo.png" alt="" /></div>
           <span className="auth-art-caption">BRIDGELAND<br/>COMPUTER SCIENCE</span>
           <span className="auth-art-spark auth-spark-one">✳</span>
           <span className="auth-art-spark auth-spark-two">＋</span>
         </aside>
+        <aside className="auth-art auth-code-art">
+          <div className="auth-code-card">
+            <div className="auth-code-top"><span className="auth-code-dots"><i/><i/><i/></span><span>python.py</span></div>
+            <pre><code><span className="code-purple">def</span> <span className="code-blue">solve</span>(problem):<br/>  <span className="code-purple">for</span> idea <span className="code-purple">in</span> practice:<br/>    <span className="code-purple">if</span> idea.<span className="code-blue">works</span>():<br/>      <span className="code-purple">return</span> <span className="code-green">"success"</span><br/>  <span className="code-purple">return</span> <span className="code-green">"keep learning"</span></code></pre>
+            <span className="auth-code-prompt">&gt; build something brilliant<span className="auth-cursor">_</span></span>
+          </div>
+          <span className="auth-art-caption">LEARN · PRACTICE · BUILD</span>
+          <span className="auth-art-spark auth-spark-three">{ }</span>
+        </aside>
+        </div>
         <div className="auth-wrap">
           <div className="auth-intro"><span className="eyebrow">Bridgeland High School · Cypress, TX</span><h1>Learn. Practice. Build.</h1></div>
         {!showReg?(
@@ -1244,15 +1255,6 @@ export default function App(){
           </div>
         )}
         </div>
-        <aside className="auth-art auth-code-art" aria-hidden="true">
-          <div className="auth-code-card">
-            <div className="auth-code-top"><span className="auth-code-dots"><i/><i/><i/></span><span>python.py</span></div>
-            <pre><code><span className="code-purple">def</span> <span className="code-blue">solve</span>(problem):<br/>  <span className="code-purple">for</span> idea <span className="code-purple">in</span> practice:<br/>    <span className="code-purple">if</span> idea.<span className="code-blue">works</span>():<br/>      <span className="code-purple">return</span> <span className="code-green">"success"</span><br/>  <span className="code-purple">return</span> <span className="code-green">"keep learning"</span></code></pre>
-            <span className="auth-code-prompt">&gt; build something brilliant<span className="auth-cursor">_</span></span>
-          </div>
-          <span className="auth-art-caption">LEARN · PRACTICE · BUILD</span>
-          <span className="auth-art-spark auth-spark-three">{ }</span>
-        </aside>
         <section className="auth-feature-band" aria-hidden="true">
           <div className="auth-feature-band-intro">
             <span>THE CLUB TOOLKIT</span>
@@ -2544,19 +2546,28 @@ function UnitView({unit,data,user,upd,onBack,onFinish,onProblem,headerProps}:any
 }
 
 function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
+  const readCompletedTests=()=>{
+    const completed:Record<string,boolean>={};
+    UIL_TESTS.forEach((test:any)=>{
+      try{const saved=localStorage.getItem(`bridgeland-cs-club:uil-attempt:${username}:${test.id}`);completed[test.id]=!!saved&&!!JSON.parse(saved).submittedAt;}catch{completed[test.id]=false;}
+    });
+    return completed;
+  };
   const [section,setSection]=useState<"guide"|"tests">("guide");
   const [activeTest,setActiveTest]=useState<any>(null);
+  const [completedTests,setCompletedTests]=useState<Record<string,boolean>>(()=>readCompletedTests());
+  useEffect(()=>setCompletedTests(readCompletedTests()),[username,section,activeTest]);
   const leaveTest=()=>{onRunnerStatus?.(null);onExamModeChange?.(false);setActiveTest(null);};
-  const startTest=(test:any)=>{
+  const startTest=(test:any,restart=false)=>{
     const attemptStartedAt=Date.now();
-    setActiveTest({...test,attemptStartedAt});
+    setActiveTest({...test,attemptStartedAt,restart});
     onExamModeChange?.(true);
     onRunnerStatus?.({year:test.year,level:test.level,startedAt:attemptStartedAt,minutes:test.minutes,answered:0,questions:test.questions,submitted:false,onBack:leaveTest});
   };
-  if(activeTest)return <UILTestRunner key={activeTest.id} test={activeTest} username={username} onBack={leaveTest} onStatusChange={onRunnerStatus}/>;
+  if(activeTest)return <UILTestRunner key={`${activeTest.id}:${activeTest.attemptStartedAt}`} test={activeTest} username={username} onBack={leaveTest} onStatusChange={onRunnerStatus}/>;
   return(
     <div className="uil-prep-page">
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:18}}>
+      <div className="uil-prep-header" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:18}}>
         <div><div style={{fontSize:12,fontWeight:700,color:C.orangeText,textTransform:"uppercase",letterSpacing:1}}>Contest preparation</div><h2 style={{margin:"3px 0 4px"}}>UIL Computer Science Prep</h2><div style={{fontSize:14,color:C.muted}}>Step-by-step Java topics and official UIL Written practice tests.</div></div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <SecBtn onClick={()=>setSection("guide")} style={{background:section==="guide"?C.orange18:C.bgInput,color:section==="guide"?C.orangeText:C.muted,borderColor:section==="guide"?C.orange:C.border,fontWeight:700}}>Topic Guide</SecBtn>
@@ -2565,7 +2576,7 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
       </div>
       {section==="guide"?(
         <>
-          <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
+          <h3 className="uil-topic-list-heading" style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"20px 0 10px"}}>Full 2026–27 topic list</h3>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,400px),1fr))",gap:16}}>
             {UIL_TOPIC_UNITS.map((unit:any)=>(
               <div key={unit.title} className="uil-topic-card" style={{...cardS,margin:0}}>
@@ -2600,10 +2611,10 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
               <h3 style={{fontSize:13,color:C.muted,textTransform:"uppercase",letterSpacing:1,margin:"0 0 10px"}}>{year} tests</h3>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:14}}>
                 {UIL_TESTS.filter((test:any)=>test.year===year).map((test:any)=>(
-                  <div key={test.id} className="uil-test-card" style={{...cardS,margin:0,padding:"14px 16px"}}>
-                    <div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>
+                  <div key={test.id} className={`uil-test-card${completedTests[test.id]?" completed":""}`} style={{...cardS,margin:0,padding:"14px 16px"}}>
+                    <div className="uil-test-card-heading"><div style={{fontWeight:700,marginBottom:4}}>{test.level}</div>{completedTests[test.id]&&<span className="uil-test-completed" role="img" aria-label="Completed" title="Completed">✓</span>}</div>
                     <div style={{fontSize:12,color:C.muted,marginBottom:12}}>40 questions · 45 minutes</div>
-                    <Btn onClick={()=>startTest(test)}>Take test →</Btn>
+                    <Btn onClick={()=>startTest(test,!!completedTests[test.id])}>{completedTests[test.id]?"Retake test →":"Take test →"}</Btn>
                   </div>
                 ))}
               </div>
@@ -2616,9 +2627,10 @@ function UILPrepPage({username,onExamModeChange,onRunnerStatus}:any){
   );
 }
 
-function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSelect}:any){
+function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSelect,focusQuestion}:any){
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const pageRef=useRef<HTMLDivElement|null>(null);
+  const focusAnchorRef=useRef<HTMLDivElement|null>(null);
   useEffect(()=>{
     const canvas=canvasRef.current,container=canvas?.parentElement;
     if(!canvas||!container)return;
@@ -2657,7 +2669,15 @@ function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSel
     resize?.observe(container);
     return()=>{disposed=true;intersection?.disconnect();resize?.disconnect();renderTask?.cancel();};
   },[page]);
+  useEffect(()=>{
+    if(!focusQuestion)return;
+    const frame=requestAnimationFrame(()=>focusAnchorRef.current?.scrollIntoView({behavior:"smooth",block:"center"}));
+    return()=>cancelAnimationFrame(frame);
+  },[focusQuestion,pageNumber]);
   const choices=Object.entries(paper.choices||{}).flatMap(([question,items]:any)=>(items||[]).filter((choice:any)=>choice.page===pageNumber).map((choice:any)=>({question:Number(question),...choice}))).filter((choice:any)=>!test.writtenQuestions?.includes(choice.question));
+  const focusChoice=focusQuestion?(paper.choices?.[focusQuestion]||[]).find((choice:any)=>choice.page===pageNumber):null;
+  const focusWritten=focusQuestion&&paper.written?.[focusQuestion]?.page===pageNumber?paper.written[focusQuestion]:null;
+  const focusY=focusChoice?.y??focusWritten?.y;
   const selectNearest=(event:any,choice:any)=>{
     if(event.detail===0){onSelect(choice.question,choice.letter);return;}
     const bounds=pageRef.current?.getBoundingClientRect();
@@ -2673,6 +2693,7 @@ function UILPaperPage({page,pageNumber,paper,test,answers,result,submitted,onSel
   };
   return <div ref={pageRef} className="uil-paper-page" style={{aspectRatio:`${paper.width}/${paper.height}`}} aria-label={`Test page ${pageNumber+1}`}>
     <canvas ref={canvasRef} className="uil-paper-canvas"/>
+    {focusY!==undefined&&<div ref={focusAnchorRef} className="uil-paper-question-anchor" style={{top:`${Math.max(0,focusY-65)/paper.height*100}%`}} aria-hidden="true"/>}
     {choices.map((choice:any)=>{
       const detail=result?.details?.[choice.question-1],selected=answers?.[choice.question]===choice.letter;
       const state=submitted&&selected?(detail?.correct?" correct":" incorrect"):"";
@@ -2689,9 +2710,11 @@ function formatUILDuration(milliseconds:number){
 
 function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const [benchmarkLevel,setBenchmarkLevel]=useState<"district"|"regional"|"state">("district");
+  const [reviewQuestion,setReviewQuestion]=useState<number|null>(null);
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
   const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,pageTimeMs:{} as Record<string,number>,pageTimingAvailable:true,pageTimingComplete:true,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
+    if(test.restart)return {...makeAttempt(),startedAt:test.attemptStartedAt||Date.now()};
     try{const saved=localStorage.getItem(storageKey);if(saved)return JSON.parse(saved);}catch{/* Start a fresh attempt if saved progress cannot be read. */}
     return {...makeAttempt(),startedAt:test.attemptStartedAt||Date.now()};
   });
@@ -2832,6 +2855,27 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
         <div><span>Score</span><strong>{result.points} / {test.questions*test.pointsCorrect}</strong></div>
       </section>
       <section className="uil-result-card">
+        <h2>Question breakdown</h2>
+        <p className="uil-right-question-list"><strong>Questions correct:</strong> {right.length?right.map((detail:any)=>detail.question).join(", "):"None"}</p>
+        <div className="uil-question-results">
+          {result.details.map((detail:any)=><article key={detail.question} className={`uil-question-result${detail.correct?" correct":detail.answered?" incorrect":" unanswered"}`}>
+            <strong>Question {detail.question} · {detail.correct?"Correct":detail.answered?"Incorrect":"Unanswered"}</strong>
+            {detail.question<=FIRST_15_TIPS.length&&<span><b>Main topic:</b> {FIRST_15_TIPS[detail.question-1].title.replace(/^\d+\.\s*/,"")}</span>}
+            <span>Your answer: {detail.response||"—"}</span>
+            <span>Correct answer: {detail.expected?detail.expected.split("||").join(" or "):"Unavailable"}</span>
+            <button type="button" className="uil-view-question" onClick={()=>setReviewQuestion(detail.question)}>View original question</button>
+          </article>)}
+        </div>
+      </section>
+      {reviewQuestion!==null&&(()=>{
+        const mappedChoices=paper?.choices?.[reviewQuestion]||[];
+        const pageIndex=mappedChoices[0]?.page??paper?.written?.[reviewQuestion]?.page;
+        return <section className="uil-result-card uil-review-paper-card" aria-label={`Original paper for question ${reviewQuestion}`}>
+          <div className="uil-review-paper-heading"><div><h2>Original test page · Question {reviewQuestion}</h2><p>Here’s the question in its original packet.</p></div><button type="button" className="uil-review-paper-close" onClick={()=>setReviewQuestion(null)}>Close</button></div>
+          {pdfError?<div role="alert" className="uil-paper-error">Unable to open the student test packet. {pdfError}</div>:pageIndex===undefined?<div className="uil-paper-error">The original page for this question is unavailable.</div>:!pdfPages[pageIndex]?<div className="uil-paper-loading">Loading the original question…</div>:<div className="uil-review-paper"><UILPaperPage page={pdfPages[pageIndex]} pageNumber={pageIndex} paper={paper} test={test} answers={attempt.answers} result={result} submitted={true} focusQuestion={reviewQuestion} onSelect={()=>{}}/></div>}
+        </section>;
+      })()}
+      <section className="uil-result-card">
         <h2>Time spent on each page</h2>
         <div className="uil-page-time-grid">
           {pageTimes.map(item=><div key={item.page}><span>Page {item.page}</span><strong>{item.milliseconds===null?(item.unvisited?"Not visited":"Not tracked"):formatUILDuration(item.milliseconds)}</strong></div>)}
@@ -2843,19 +2887,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
         {missed.length?<><p>Review these questions in your next study session, then revisit the related topics in the Topic Guide.</p>
           {missedTipTopics.length>0&&<><h3 className="uil-review-subheading">Main topics from the first 15</h3><div className="uil-review-topic-list">{missedTipTopics.map((topic:any)=><div className="uil-review-topic" key={topic.question}><strong>{topic.title}</strong><span>Question {topic.question}</span></div>)}</div></>}
           {missedBeyondTips.length>0&&<><h3 className="uil-review-subheading">Main UIL topic areas for the other missed questions</h3><p>Use the question breakdown below to match these questions to the relevant area in the Topic Guide.</p><div className="uil-review-topic-list">{UIL_TOPIC_UNITS.map((unit:any)=><div className="uil-review-topic broad" key={unit.title}><strong>{unit.title}</strong></div>)}</div></>}
-          <h3 className="uil-review-subheading">Questions to revisit</h3><div className="uil-review-question-list">{missed.map((detail:any)=><span key={detail.question}>Question {detail.question}</span>)}</div></>:<p>You answered every question correctly. Keep practicing to stay sharp.</p>}
-      </section>
-      <section className="uil-result-card">
-        <h2>Question breakdown</h2>
-        <p className="uil-right-question-list"><strong>Questions correct:</strong> {right.length?right.map((detail:any)=>detail.question).join(", "):"None"}</p>
-        <div className="uil-question-results">
-          {result.details.map((detail:any)=><article key={detail.question} className={`uil-question-result${detail.correct?" correct":detail.answered?" incorrect":" unanswered"}`}>
-            <strong>Question {detail.question} · {detail.correct?"Correct":detail.answered?"Incorrect":"Unanswered"}</strong>
-            {detail.question<=FIRST_15_TIPS.length&&<span><b>Main topic:</b> {FIRST_15_TIPS[detail.question-1].title.replace(/^\d+\.\s*/,"")}</span>}
-            <span>Your answer: {detail.response||"—"}</span>
-            <span>Correct answer: {detail.expected?detail.expected.split("||").join(" or "):"Unavailable"}</span>
-          </article>)}
-        </div>
+          <h3 className="uil-review-subheading">Questions to revisit</h3><div className="uil-review-question-list">{missed.map((detail:any)=><button key={detail.question} type="button" onClick={()=>setReviewQuestion(detail.question)}>Question {detail.question}</button>)}</div></>:<p>You answered every question correctly. Keep practicing to stay sharp.</p>}
       </section>
       <details className="uil-result-card uil-benchmark-card">
         <summary>Compare with past UIL leaderboards <span>2025 · Conference 6A</span></summary>
