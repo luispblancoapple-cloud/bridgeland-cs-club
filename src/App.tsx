@@ -4,6 +4,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, deleteField, arrayUnion, limit } from "firebase/firestore";
 import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
 import WrittenTestRunner from "./WrittenTestRunner";
+import SubmissionConfirmDialog from "./SubmissionConfirmDialog";
 import { UIL_WRITTEN_TESTS } from "./uilWrittenPractice";
 import UIL_PAPER_MAP from "./uilPaperMap.json";
 
@@ -2805,6 +2806,7 @@ function formatUILDuration(milliseconds:number){
 function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const [benchmarkLevel,setBenchmarkLevel]=useState<"district"|"regional"|"state">("district");
   const [reviewQuestion,setReviewQuestion]=useState<number|null>(null);
+  const [showSubmitConfirm,setShowSubmitConfirm]=useState(false);
   const storageKey=`bridgeland-cs-club:uil-attempt:${username}:${test.id}`;
   const makeAttempt=()=>({startedAt:Date.now(),answers:{} as Record<string,string>,written:{} as Record<string,string>,pageTimeMs:{} as Record<string,number>,pageTimingAvailable:true,pageTimingComplete:true,submittedAt:null as number|null});
   const [attempt,setAttempt]=useState<any>(()=>{
@@ -2917,7 +2919,8 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
     return{correct,incorrect,unanswered,points:correct*test.pointsCorrect-incorrect*test.penaltyIncorrect,details};
   };
   const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
-  const submit=()=>{if(answered<test.questions&&!window.confirm(`You have answered ${answered} of ${test.questions} questions. Submit anyway?`))return;finishAttempt();};
+  const submit=()=>setShowSubmitConfirm(true);
+  const confirmSubmit=()=>{setShowSubmitConfirm(false);finishAttempt();};
   const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser.")){submittedRef.current=false;pageVisitRef.current={index:-1,startedAt:Date.now()};saveAttempt(makeAttempt());}};
   submitRef.current=submit;resetRef.current=reset;
   useEffect(()=>{
@@ -3015,6 +3018,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
       })}
       {result&&<div className="uil-score-summary" role="status"><strong>Score: {result.points} points</strong><span>{result.correct} correct</span><span>{result.incorrect} incorrect</span><span>{result.unanswered} unanswered</span></div>}
     </div>}
+    {showSubmitConfirm&&<SubmissionConfirmDialog answered={answered} total={test.questions} onConfirm={confirmSubmit} onCancel={()=>setShowSubmitConfirm(false)}/>}
   </div>;
 }
 

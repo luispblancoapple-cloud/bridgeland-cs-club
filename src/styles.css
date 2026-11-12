@@ -538,6 +538,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .account-recovery-notice { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin: 0 0 16px; padding: 13px 16px; border: 1px solid var(--green-33); border-left: 4px solid var(--green); border-radius: 12px; color: var(--green); background: linear-gradient(110deg, var(--green-18), var(--surface)); box-shadow: var(--shadow); font-size: 14px; line-height: 1.5; }
 .account-recovery-notice button { flex: 0 0 auto; padding: 0 2px; border: 0; color: inherit; background: transparent; font-size: 21px; line-height: 1; cursor: pointer; }
 .account-recovery-notice button:focus-visible { outline: 2px solid var(--green-33); outline-offset: 3px; border-radius: 4px; }
+.submit-confirm-backdrop { position: fixed; z-index: 1500; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(12, 24, 36, .56); backdrop-filter: blur(4px); }
+.submit-confirm-dialog { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
+.submit-confirm-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--orange-33); border-radius: 13px; color: var(--orange-text); background: var(--orange-18); font-size: 20px; font-weight: 900; }
+.submit-confirm-copy h2 { margin: 1px 0 7px; font-size: clamp(20px, 4vw, 24px); line-height: 1.25; }
+.submit-confirm-copy p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.submit-confirm-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+.submit-confirm-cancel, .submit-confirm-submit { min-height: 42px; padding: 10px 16px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.submit-confirm-cancel { border: 1px solid var(--line); color: var(--text); background: var(--surface-strong); }
+.submit-confirm-submit { border: 1px solid var(--orange); color: var(--accent-ink); background: var(--orange); }
+.submit-confirm-cancel:hover { background: var(--blue-12); }
+.submit-confirm-submit:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.submit-confirm-cancel:focus-visible, .submit-confirm-submit:focus-visible { outline: 3px solid var(--orange-33); outline-offset: 2px; }
+@keyframes submit-confirm-enter { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .written-test-entry-copy { min-width: 0; }
 .written-test-eyebrow { color: var(--orange-text); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .written-test-entry h3 { margin: 5px 0 5px; font-size: 21px; }

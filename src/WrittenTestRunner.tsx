@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { UILWrittenTest } from "./uilWrittenPractice";
 import UIL_PAPER_MAP from "./uilPaperMap.json";
+import SubmissionConfirmDialog from "./SubmissionConfirmDialog";
 
 const TEST_MINUTES = 12;
 
@@ -80,6 +81,7 @@ export default function WrittenTestRunner({ username, test, onBack, onStatusChan
   });
   const [questionIndex, setQuestionIndex] = useState(0);
   const [sourceQuestionIndex, setSourceQuestionIndex] = useState<number | null>(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const sourcePreviewRef = useRef<HTMLElement | null>(null);
   const [now, setNow] = useState(Date.now());
   const hasResponse = (question: any, value: any) => question.choices.length ? value !== undefined : String(value ?? "").trim() !== "";
@@ -103,6 +105,7 @@ export default function WrittenTestRunner({ username, test, onBack, onStatusChan
     if (attempt.submittedAt) return;
     save({ ...attempt, submittedAt: Date.now() });
   };
+  const confirmSubmit = () => { setShowSubmitConfirm(false); finish(); };
 
   useEffect(() => {
     onExamModeChange?.(true);
@@ -119,7 +122,7 @@ export default function WrittenTestRunner({ username, test, onBack, onStatusChan
       submitted: !!attempt.submittedAt,
       isTopicPractice: true,
       onBack,
-      submit: finish,
+      submit: () => setShowSubmitConfirm(true),
       reset: () => { save(makeAttempt()); setQuestionIndex(0); },
     });
   }, [onStatusChange, attempt, answered, test]);
@@ -216,5 +219,6 @@ export default function WrittenTestRunner({ username, test, onBack, onStatusChan
       </section>
     </div>
     <p className="written-test-source">Question source: {question.sourceLabel}, question {question.sourceQuestion}. <a href={`${import.meta.env.BASE_URL}uil-packets/${question.sourceTestId}.pdf`} target="_blank" rel="noreferrer">Open the source packet ↗</a></p>
+    {showSubmitConfirm&&<SubmissionConfirmDialog answered={answered} total={test.questions.length} topicPractice onConfirm={confirmSubmit} onCancel={()=>setShowSubmitConfirm(false)}/>}
   </main>;
 }
