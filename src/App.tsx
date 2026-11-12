@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
+import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, deleteField, arrayUnion, limit } from "firebase/firestore";
 import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
 import WrittenTestRunner from "./WrittenTestRunner";
 import { UIL_WRITTEN_TESTS } from "./uilWrittenPractice";
@@ -82,6 +82,7 @@ function hasCompletedWrittenTest(username:string,testId:string):boolean{
   }catch{return false;}
 }
 const DEV_ACCOUNT: any = { username:"LuisBlanco62",passwordHash:"d76b58cc21175bccfb07399a4531e3a0141dce781c16f4e96ed05e29c5452d5f",role:"developer",name:"Luis Blanco" };
+const PRIMARY_ADMIN_USERNAMES = new Set(["iamgroot", "luispblanco", "luisblanco62"]);
 const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
 const LOGO_URL = "https://pbs.twimg.com/profile_images/941019066268971008/x4ZldzQq.jpg";
 
@@ -329,9 +330,13 @@ async function saveData(prev:any,next:any){
     const prevMap=new Map(prevArr.map((x:any)=>[String(x[idField]),x]));
     const nextMap=new Map(nextArr.map((x:any)=>[String(x[idField]),x]));
     prevMap.forEach((_v,id)=>{ if(!nextMap.has(id))ops.push(deleteDoc(doc(db,collName,id as string))); });
-    nextMap.forEach((item,id)=>{
+      nextMap.forEach((item,id)=>{
       const before=prevMap.get(id);
-      if(!before||JSON.stringify(before)!==JSON.stringify(item))ops.push(setDoc(doc(db,collName,id as string),item as any,{merge:true}));
+        if(!before||JSON.stringify(before)!==JSON.stringify(item)){
+          const writeItem:any={...item};
+          if(before&&Object.prototype.hasOwnProperty.call(before,"password")&&!Object.prototype.hasOwnProperty.call(item,"password"))writeItem.password=deleteField();
+          ops.push(setDoc(doc(db,collName,id as string),writeItem,{merge:true}));
+        }
     });
   });
 
@@ -1080,6 +1085,9 @@ export default function App(){
   const [regErr,setRegErr]=useState("");
   const [showReg,setShowReg]=useState(false);
   const [modal,setModal]=useState<any>(null);
+  const [passwordResetTarget,setPasswordResetTarget]=useState<any>(null);
+  const [replacementPassword,setReplacementPassword]=useState("");
+  const [passwordResetError,setPasswordResetError]=useState("");
   const [activeProblem,setActiveProblem]=useState<any>(null);
   const [activeUnit,setActiveUnit]=useState<any>(null);
   const [activeCodingUnit,setActiveCodingUnit]=useState<any>(null);
@@ -1166,7 +1174,8 @@ export default function App(){
 
   const login=async()=>{
     const attemptHash=await hashPassword(loginForm.password);
-    if(loginForm.username===DEV_ACCOUNT.username&&attemptHash===DEV_ACCOUNT.passwordHash){setUser(DEV_ACCOUNT);setLoginErr("");return;}
+    const storedDeveloper=data.users.find((u:any)=>u.username===DEV_ACCOUNT.username);
+    if(loginForm.username===DEV_ACCOUNT.username&&attemptHash===DEV_ACCOUNT.passwordHash&&!storedDeveloper?.passwordReset){setUser(DEV_ACCOUNT);setLoginErr("");return;}
     let f=data.users.find((u:any)=>u.username===loginForm.username&&u.passwordHash===attemptHash);
     // MIGRATION: accounts created before this security update stored a plaintext
     // `password` field instead of `passwordHash`. If we find one, log the member in
@@ -1180,7 +1189,34 @@ export default function App(){
         upd((d:any)=>({...d,users:d.users.map((u:any)=>u.username===legacy.username?f:u)}));
       }
     }
-    if(f){setUser(f);setLoginErr("");}else setLoginErr("Invalid username or password.");
+    if(f){
+      if(PRIMARY_ADMIN_USERNAMES.has(String(f.username||"").toLowerCase())&&f.role!=="developer"){
+        f={...f,role:"developer"};
+        upd((d:any)=>({...d,users:d.users.map((u:any)=>u.username===f.username?f:u)}));
+      }
+      setUser(f);setLoginErr("");
+    }else setLoginErr("Invalid username or password.");
+  };
+  const setMemberPassword=async()=>{
+    const member=passwordResetTarget;
+    const password=replacementPassword;
+    if(!member)return;
+    if(password.length<8){setPasswordResetError("Use a password with at least 8 characters.");return;}
+    const passwordHash=await hashPassword(password);
+    upd((d:any)=>{
+      const exists=d.users.some((account:any)=>account.username===member.username);
+      const users=exists?d.users.map((account:any)=>{
+        if(account.username!==member.username)return account;
+        const next={...account,passwordHash,passwordReset:member.username===DEV_ACCOUNT.username||!!account.passwordReset};
+        delete next.password;
+        return next;
+      }):[...d.users,{...DEV_ACCOUNT,passwordHash,passwordReset:true}];
+      return {...d,users};
+    });
+    setPasswordResetTarget(null);
+    setReplacementPassword("");
+    setPasswordResetError("");
+    window.alert(`A new password was set for @${member.username}. Share it directly with them; it cannot be viewed again.`);
   };
   const register=async()=>{
     const uname=regForm.username.trim();
@@ -1513,7 +1549,7 @@ export default function App(){
                   {UIL_WRITTEN_TESTS.map((test:any)=>{
                     const completed=hasCompletedWrittenTest(user.username,test.id);
                     return <article key={test.id} className="written-test-topic-card">
-                    <div className="written-test-topic-card-heading"><div><h4>{test.title}</h4><span>10 questions · 12 minutes</span></div></div>
+                    <div className="written-test-topic-card-heading"><div><h4>{test.title}</h4><div className="written-test-topic-card-meta"><span>10 questions · 12 minutes</span><span className={`written-test-difficulty ${test.difficulty.toLowerCase()}`}>{test.difficulty}</span></div></div></div>
                     <p>{test.description}</p>
                     <Btn
                       color={completed?C.blue:C.orange}
@@ -1696,22 +1732,33 @@ export default function App(){
         {page==="members"&&isDev&&(
           <div>
             <h2>Manage Members</h2>
-            {(data.users||[]).filter((u:any)=>u.username!==DEV_ACCOUNT.username).map((u:any)=>(
+            <p style={{color:C.muted,fontSize:13,margin:"-6px 0 14px"}}>Passwords are stored as hashes and cannot be viewed. Set a new password to help a member recover an account.</p>
+            {[...(data.users||[]),...((data.users||[]).some((u:any)=>u.username===DEV_ACCOUNT.username)?[]:[DEV_ACCOUNT])].map((u:any)=>(
               <div key={u.username} style={{...cardS,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <span style={{fontWeight:600}}>{u.name||u.username}</span>
                   <span style={{fontSize:12,color:C.muted,marginLeft:8}}>@{u.username}</span>
                   <Tag c={u.role==="developer"?C.purple:u.role==="officer"?C.orange:C.muted}>{u.role}</Tag>
                 </div>
-                <div style={{display:"flex",gap:8}}>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {u.role==="member"&&<SecBtn onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Make officer</SecBtn>}
-                  {u.role==="officer"&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"member"}:x)}))}>Demote</Btn>}
+                  {u.role==="officer"&&!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"member"}:x)}))}>Demote</Btn>}
                   {u.role==="officer"&&<SecBtn onClick={()=>{if(window.confirm(`Make ${u.name||u.username} a developer? Developers can manage members (including other developers) and have full admin access.`))upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"developer"}:x)}));}}>Make developer</SecBtn>}
-                  {u.role==="developer"&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Demote to officer</Btn>}
-                  <OutBtn danger onClick={()=>{if(window.confirm(`Delete ${u.name||u.username}? This cannot be undone.`))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>
+                  {u.role==="developer"&&!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Demote to officer</Btn>}
+                  <SecBtn onClick={()=>{setPasswordResetTarget(u);setReplacementPassword("");setPasswordResetError("");}}>Set password</SecBtn>
+                  {!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<OutBtn danger onClick={()=>{if(window.confirm(`Delete ${u.name||u.username}? This cannot be undone.`))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>}
                 </div>
               </div>
             ))}
+            {passwordResetTarget&&<div role="presentation" style={{position:"fixed",inset:0,zIndex:1000,display:"grid",placeItems:"center",padding:20,background:"rgba(12,24,36,.55)"}}>
+              <section role="dialog" aria-modal="true" aria-labelledby="set-password-title" style={{width:"min(100%,440px)",padding:24,border:`1px solid ${C.border}`,borderRadius:16,background:C.bgCard,boxShadow:"0 24px 80px rgba(0,0,0,.25)"}}>
+                <h3 id="set-password-title" style={{margin:"0 0 8px",fontSize:21}}>Set a new password</h3>
+                <p style={{margin:"0 0 14px",color:C.muted,fontSize:13,lineHeight:1.5}}>For @{passwordResetTarget.username}. The password will be saved as a hash and cannot be viewed later. Share it with the account holder directly.</p>
+                <input autoFocus type="password" autoComplete="new-password" value={replacementPassword} onChange={(event:any)=>{setReplacementPassword(event.target.value);setPasswordResetError("");}} onKeyDown={(event:any)=>{if(event.key==="Enter")void setMemberPassword();if(event.key==="Escape")setPasswordResetTarget(null);}} aria-label="New password" placeholder="New password (8+ characters)" style={{...inp,marginBottom:passwordResetError?8:14}} />
+                {passwordResetError&&<p role="alert" style={{margin:"0 0 12px",color:C.red,fontSize:13}}>{passwordResetError}</p>}
+                <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><OutBtn onClick={()=>{setPasswordResetTarget(null);setReplacementPassword("");setPasswordResetError("");}}>Cancel</OutBtn><Btn onClick={()=>void setMemberPassword()}>Set password</Btn></div>
+              </section>
+            </div>}
           </div>
         )}
         </div>

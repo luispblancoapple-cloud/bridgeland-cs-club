@@ -14,6 +14,7 @@ export type UILWrittenTest = {
   id: string;
   title: string;
   description: string;
+  difficulty: "Easy" | "Medium" | "Hard";
   questions: UILWrittenQuestion[];
 };
 
@@ -35,6 +36,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "number-systems-arithmetic",
     title: "Number Systems & Arithmetic",
     description: "Practice number-base conversion and Java arithmetic, including operator precedence and integer division.",
+    difficulty: "Medium",
     questions: [
       q("2022-district", "2022 District", 1, "Number bases", "Which of the following is equal to DC₁₆ − BD₁₆?", ["21₁₆", "47₁₀", "11110₂", "1F₁₆", "None of these"], 3),
       q("2022-district", "2022 District", 2, "Arithmetic expressions", "What is the output?", ["1", "49", "28", "28.0", "There is no output due to a syntax error"], 0, "out.print(14 + -3 - +3 * 7 / 2);"),
@@ -52,6 +54,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "string-methods",
     title: "String Methods",
     description: "Trace substring, index, comparison, and formatting methods across UIL written questions.",
+    difficulty: "Medium",
     questions: [
       q("2022-district", "2022 District", 4, "String methods", "What is the output?", ["1", "2", "3", "5", "−1"], 2, 'out.print("banana".lastIndexOf("a", 3));'),
       q("2022-invitational-b", "2022 Invitational B", 4, "String methods", "What is the output?", ["4", "5", "6", "7", "8"], 3, 'String str = "hello world";\nout.print(str.lastIndexOf(\'o\'));'),
@@ -69,6 +72,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "branching-loops",
     title: "Branching & Loops",
     description: "Trace if/else and switch behavior, loop bounds, updates, and repeated output.",
+    difficulty: "Medium",
     questions: [
       q("2022-district", "2022 District", 8, "Branching", "What is the output?", ["small x", "big X", "small X", "crazy", "There is no output due to a compile error"], 0, "char ch = 'X';\nchar space = ' ';\nif (ch % 2 == 0) ch += space;\nif (Character.isLowerCase(ch)) out.print(\"small \" + ch);\nelse if (Character.isUpperCase(ch)) out.print(\"big \" + ch);\nelse out.print(\"crazy\");"),
       q("2022-district", "2022 District", 9, "Loop bounds", "How many asterisks are printed?", ["13", "24", "26", "28", "52"], 2, "for (int x = 17; x <= 41; x += 2) {\n    out.print(\"**\");\n}"),
@@ -86,6 +90,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "arrays-accumulation",
     title: "Arrays & Accumulation",
     description: "Work through array indexing and trace sum, product, and accumulator loops.",
+    difficulty: "Medium",
     questions: [
       q("2022-district", "2022 District", 10, "Array assignments", "What is the output?", ["[3, 1, 4, 1, 5, 9]", "[3, 1, 4, 4, 1, 3]", "[9, 5, 1, 1, 5, 9]", "[5, 1, 6, 4, 0, 5]", "There is no output due to an error"], 1, "int[] ints = {9, 5, 1, 4, 1, 3};\nints[0] = ints[ints.length - 1];\nints[ints.length - 1] = ints[0];\nints[1] = ints[ints.length - 2];\nints[ints.length - 2] = ints[1];\nints[2] = ints[ints.length - 3];\nints[ints.length - 3] = ints[2];\nout.print(Arrays.toString(ints));"),
       q("2022-district", "2022 District", 12, "Accumulation loops", "What is the output?", ["127", "1364", "341", "340", "None of the above"], 2, "int y = 0;\nfor (int x = 1; x <= 16; x *= 2) y += x * x;\nout.print(y);"),
@@ -103,6 +108,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "logic-operators",
     title: "Boolean & Bitwise Operators",
     description: "Practice Boolean truth, XOR, bitwise AND/OR, shifts, and operator precedence.",
+    difficulty: "Hard",
     questions: [
       q("2022-district", "2022 District", 5, "Boolean logic", "What is the output?", ["true", "false"], 1, "boolean t = true;\nboolean f = false;\nboolean tt = true;\nboolean ff = false;\nout.print(t ^ f ^ tt ^ ff);"),
       q("2022-district", "2022 District", 16, "Bitwise AND", "What is the output?", ["4", "5", "7", "8", "There is no output due to a compile error"], 1, "int x = 7;\nint y = 4;\nif ((x & 9) == 1 & y++ == 4) out.println(y);\nelse out.println(x);"),
@@ -120,6 +126,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "binary-search-trees",
     title: "Binary Search Trees",
     description: "Practice traversals, tree height and width, leaves, internal nodes, diameter, and search complexity.",
+    difficulty: "Hard",
     questions: [
       q("2022-region", "2022 Region", 35, "BST traversals", "The letters DBFCAGE are inserted into a binary search tree in order. Which traversal visits the nodes in the order DBFACEG?", ["Pre-order", "Post-order", "In-order", "Level-order", "None of the above"], 3),
       q("2023-invitational-a", "2023 Invitational A", 36, "BST leaves", "If these letters are inserted into an initially empty binary search tree, how many leaves will the resulting tree contain?", ["9", "10", "12", "1", "19"], 1, "A B C D E F G H I J J I H G F E D C B A"),
@@ -137,6 +144,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "inheritance-oop",
     title: "Inheritance & Object-Oriented Java",
     description: "Practice inheritance, constructors, fields, method dispatch, and compile-time access across related classes.",
+    difficulty: "Hard",
     questions: [
       q("2022-region", "2022 Region", 25, "Inherited instance variables", "How many instance variables does a fish object have, counting the fields it inherits from pet?", ["0", "1", "2", "3", "4"], 2, "class pet {\n    private int weight;\n    private String name;\n    public pet(int w, String n) { this.weight = w; this.name = n; }\n}\nclass fish extends pet {\n    public fish(int w, String n) { super(w, n); }\n}"),
       q("2022-state", "2022 State", 27, "Inherited instance variables", "How many instance variables are part of a RedPanda object, including fields declared by Panda?", ["0", "1", "2", "3", "4"], 3, 'class Panda {\n    public String name;\n    public Panda() { this.name = "Jerry"; }\n}\nclass RedPanda extends Panda {\n    public String name;\n    public String color;\n}'),
@@ -154,6 +162,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "regular-expressions",
     title: "Regular Expressions (Regex)",
     description: "Practice Java String.matches, character classes, anchors, repetition, escapes, and combining patterns.",
+    difficulty: "Hard",
     questions: [
       q("2022-district", "2022 District", 35, "Regex anchors", "Which symbol denotes the beginning of a line in a regular expression?", ["%", "$", "^", "\\b", "None of the above"], 2),
       q("2022-region", "2022 Region", 39, "Regex character classes", "How many unique strings can replace CODE so both matches calls return true?", [], "4", undefined, 'String A = "[ABC]{1,2}";\nString B = "[BCD]{2,3}";\nString C = /* CODE */;\nout.print(C.matches(A) && C.matches(B));'),
@@ -171,6 +180,7 @@ export const UIL_WRITTEN_TESTS: UILWrittenTest[] = [
     id: "print-formatting",
     title: "Print Formatting: print, println & printf",
     description: "Trace exact output with print, println, printf format specifiers, rounding, field widths, escapes, and line breaks.",
+    difficulty: "Easy",
     questions: [
       q("2022-district", "2022 District", 3, "Rounding and line breaks", "What is the output?", ["PI\n3.14Pie", "Pi\n3.141Pie", "Pi\n3.142Pie", "Pi\n3.141\nPie", "Pi\n3.142\nPie"], 2, 'out.println("Pi");\nout.printf("%.3f", 3.14159);\nout.println("Pie");'),
       q("2022-invitational-a", "2022 Invitational A", 3, "Width and precision", "What is printed?", ["002.34", "02.34", "02.35", "002.35", "None of the above"], 2, 'out.printf("%05.2f", 2.345);'),
