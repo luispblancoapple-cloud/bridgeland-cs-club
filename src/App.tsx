@@ -584,8 +584,8 @@ function ImgPick({label="Add image (optional)",onPick,preview}:any){
 const inp:any={background:C.bgInput,border:`1px solid ${C.border}`,color:C.text,padding:"8px 12px",borderRadius:6,fontSize:14,width:"100%",boxSizing:"border-box",fontFamily:"'DM Sans','Segoe UI',sans-serif"};
 const lbl:any={fontSize:12,color:C.muted,marginBottom:4,display:"block"};
 const cardS:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,padding:"1rem 1.25rem",marginBottom:12};
-const Btn=({color=C.orange,children,onClick,style={},disabled}:any)=>(
-  <button onClick={onClick} disabled={disabled} style={{background:disabled?C.border:color,color:color===C.orange?"var(--accent-ink)":"#fff",border:"none",padding:"8px 16px",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontSize:13,fontWeight:700,...style}}>{children}</button>
+const Btn=({color=C.orange,children,onClick,style={},disabled,className}:any)=>(
+  <button className={className} onClick={onClick} disabled={disabled} style={{background:disabled?C.border:color,color:color===C.orange?"var(--accent-ink)":"#fff",border:"none",padding:"8px 16px",borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontSize:13,fontWeight:700,...style}}>{children}</button>
 );
 const OutBtn=({children,onClick,style={},danger}:any)=>(
   <button onClick={onClick} style={{background:"transparent",color:danger?C.red:C.muted,border:`1px solid ${danger?C.red:C.border}`,padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:13,...style}}>{children}</button>
@@ -1515,7 +1515,12 @@ export default function App(){
                     return <article key={test.id} className="written-test-topic-card">
                     <div className="written-test-topic-card-heading"><div><h4>{test.title}</h4><span>10 questions · 12 minutes</span></div></div>
                     <p>{test.description}</p>
-                    <Btn onClick={()=>setActiveWrittenTest(test.id)}>{completed?"Retake topic questions →":"Practice topic questions →"}</Btn>
+                    <Btn
+                      color={completed?C.blue:C.orange}
+                      className={completed?"written-test-retake-button":""}
+                      style={completed?{background:"var(--blue-18)",color:"var(--blue-text)",border:"1px solid var(--blue-33)"}:undefined}
+                      onClick={()=>setActiveWrittenTest(test.id)}
+                    >{completed?"Retake topic questions →":"Practice topic questions →"}</Btn>
                   </article>})}
                 </div>
                 <p className="written-test-source">Questions are selected from UIL District, Region, and State packets from 2022–2026.</p>
