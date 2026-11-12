@@ -5,6 +5,7 @@ import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, get
 import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
 import WrittenTestRunner from "./WrittenTestRunner";
 import SubmissionConfirmDialog from "./SubmissionConfirmDialog";
+import { appAlert, appConfirm, appPrompt } from "./AppDialog";
 import { UIL_WRITTEN_TESTS } from "./uilWrittenPractice";
 import UIL_PAPER_MAP from "./uilPaperMap.json";
 
@@ -377,7 +378,7 @@ async function saveData(prev:any,next:any){
     await Promise.all(ops);
   }catch(e){
     console.error("Save failed — some changes may not have been written:",e);
-    if(typeof window!=="undefined")window.alert("⚠ Your last change could not be saved. Please refresh and try again, or contact the developer.");
+    if(typeof window!=="undefined")void appAlert("Your last change could not be saved. Please refresh and try again, or contact the developer.",{title:"Save failed",danger:true});
   }
 }
 
@@ -581,7 +582,7 @@ function ImgPick({label="Add image (optional)",onPick,preview}:any){
     <div style={{marginBottom:12}}>
       <div style={{fontSize:12,color:C.muted,marginBottom:6}}>{label}</div>
       <button type="button" onClick={()=>ref.current.click()} style={{background:C.bgInput,border:`1px dashed ${C.border}`,color:C.muted,padding:"8px 14px",borderRadius:6,cursor:"pointer",fontSize:13,width:"100%"}}>Click to upload image</button>
-      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){alert(err.message);}}}}/>
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){void appAlert(err.message,{title:"Image upload failed",danger:true});}}}}/>
       {preview&&<img src={preview} alt="" style={{marginTop:8,width:"100%",maxHeight:110,objectFit:"cover",borderRadius:6,border:`1px solid ${C.border}`}}/>}
     </div>
   );
@@ -776,7 +777,7 @@ function ForumPage({user,isGuest,isOfficer}:any){
 
   const deleteThread=async(id:string,e:any)=>{
     e.stopPropagation();
-    if(!window.confirm("Delete this thread and all its replies?"))return;
+    if(!await appConfirm("Delete this thread and all its replies?",{title:"Delete discussion thread",confirmLabel:"Delete thread",danger:true}))return;
     await deleteDoc(doc(db,"forumThreads",id));
     setThreads((prev:any)=>prev.filter((t:any)=>t.id!==id));
   };
@@ -906,7 +907,7 @@ function ThreadView({thread,user,onBack,isOfficer}:any){
   };
 
   const deleteReply=async(id:string)=>{
-    if(!window.confirm("Delete this reply?"))return;
+    if(!await appConfirm("Delete this reply?",{title:"Delete reply",confirmLabel:"Delete reply",danger:true}))return;
     await deleteDoc(doc(db,"forumThreads",thread.id,"replies",id));
     setReplies((prev:any)=>prev.filter((r:any)=>r.id!==id));
     await updateDoc(doc(db,"forumThreads",thread.id),{replyCount:Math.max(0,replies.length-1)});
@@ -976,7 +977,7 @@ function BugReportBtn({user}:any){
   const pickImage=async(e:any)=>{
     if(e.target.files[0]){
       try{setImage(await toB64(e.target.files[0]));}
-      catch(err:any){alert(err.message);}
+      catch(err:any){void appAlert(err.message,{title:"Image upload failed",danger:true});}
     }
   };
 
@@ -1460,7 +1461,7 @@ export default function App(){
                     ):(
                       <SecBtn onClick={()=>upd((d:any)=>({...d,pinnedAnnouncementId:a.id}),{action:`Pinned announcement "${a.title}" to top of site`})} style={{padding:"5px 10px",fontSize:12}}>📌 Pin to top</SecBtn>
                     )}
-                    <OutBtn danger onClick={()=>{if(window.confirm("Remove this announcement?"))upd((d:any)=>({...d,announcements:(d.announcements||[]).filter((x:any)=>x.id!==a.id),pinnedAnnouncementId:isPinned?null:d.pinnedAnnouncementId}),{action:`Removed announcement "${a.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Remove</OutBtn>
+                    <OutBtn danger onClick={async()=>{if(await appConfirm("Remove this announcement?",{title:"Remove announcement",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,announcements:(d.announcements||[]).filter((x:any)=>x.id!==a.id),pinnedAnnouncementId:isPinned?null:d.pinnedAnnouncementId}),{action:`Removed announcement "${a.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Remove</OutBtn>
                   </div>}
                 </div>
                 <div style={{fontSize:14,color:C.muted,margin:"8px 0"}}>{a.body}</div>
@@ -1503,7 +1504,7 @@ export default function App(){
                     <div style={{fontSize:13,color:C.muted,marginTop:4}}>{e.date} · {e.time} · {e.location}</div>
                     <div style={{fontSize:13,marginTop:6}}>{e.desc}</div>
                   </div>
-                  {isOfficer&&<OutBtn danger onClick={()=>{if(window.confirm("Remove this event?"))upd((d:any)=>({...d,events:(d.events||[]).filter((x:any)=>x.id!==e.id)}));}}>Remove</OutBtn>}
+                  {isOfficer&&<OutBtn danger onClick={async()=>{if(await appConfirm("Remove this event?",{title:"Remove event",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,events:(d.events||[]).filter((x:any)=>x.id!==e.id)}));}}>Remove</OutBtn>}
                 </div>
               </div>
             ))}
@@ -1589,7 +1590,7 @@ export default function App(){
                           <Btn onClick={(e:any)=>{e.stopPropagation();setActiveUnit(unit.id);}}>Start unit →</Btn>
                           {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                             <SecBtn onClick={()=>setModal({type:"editUnit",unit})}>Edit problems</SecBtn>
-                            <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,units:(d.units||[]).filter((x:any)=>x.id!==unit.id)}),{action:`Removed unit "${unit.title}"`});}}>Remove</OutBtn>
+                            <OutBtn danger onClick={async()=>{if(await appConfirm("Remove this unit?",{title:"Remove unit",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,units:(d.units||[]).filter((x:any)=>x.id!==unit.id)}),{action:`Removed unit "${unit.title}"`});}}>Remove</OutBtn>
                           </div>}
                         </div>
                       </div>
@@ -1613,7 +1614,7 @@ export default function App(){
                         </div>
                         {isOfficer&&<div style={{display:"flex",gap:6}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editProb",prob:p})} style={{padding:"5px 10px",fontSize:12}}>Edit</SecBtn>
-                          <OutBtn danger onClick={()=>{if(window.confirm("Delete this problem? It will also be removed from any units."))upd((d:any)=>({...d,problems:(d.problems||[]).filter((x:any)=>x.id!==p.id),units:(d.units||[]).map((u:any)=>({...u,problemIds:(u.problemIds||[]).filter((id:any)=>id!==p.id)}))}),{action:`Deleted problem "${p.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Delete</OutBtn>
+                          <OutBtn danger onClick={async()=>{if(await appConfirm("It will also be removed from any units.",{title:`Delete ${p.title}?`,confirmLabel:"Delete problem",danger:true}))upd((d:any)=>({...d,problems:(d.problems||[]).filter((x:any)=>x.id!==p.id),units:(d.units||[]).map((u:any)=>({...u,problemIds:(u.problemIds||[]).filter((id:any)=>id!==p.id)}))}),{action:`Deleted problem "${p.title}"`});}} style={{padding:"5px 10px",fontSize:12}}>Delete</OutBtn>
                         </div>}
                       </div>
                     );
@@ -1676,7 +1677,7 @@ export default function App(){
                           <Btn onClick={(e:any)=>{e.stopPropagation();setActiveCodingUnit(cu.id);}}>Open unit →</Btn>
                           {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                             <SecBtn onClick={()=>setModal({type:"editCodingUnit",codingUnit:cu})}>Edit questions</SecBtn>
-                            <OutBtn danger onClick={()=>{if(window.confirm("Remove this unit?"))upd((d:any)=>({...d,codingUnits:(d.codingUnits||[]).filter((x:any)=>x.id!==cu.id)}),{action:`Removed coding unit "${cu.title}"`});}}>Remove</OutBtn>
+                            <OutBtn danger onClick={async()=>{if(await appConfirm("Remove this unit?",{title:"Remove coding unit",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,codingUnits:(d.codingUnits||[]).filter((x:any)=>x.id!==cu.id)}),{action:`Removed coding unit "${cu.title}"`});}}>Remove</OutBtn>
                           </div>}
                         </div>
                       </div>
@@ -1709,7 +1710,7 @@ export default function App(){
                         <Btn onClick={(e:any)=>{e.stopPropagation();setActiveCoding(cq.id);}}>Open →</Btn>
                         {isOfficer&&<div style={{display:"flex",gap:8}} onClick={(e:any)=>e.stopPropagation()}>
                           <SecBtn onClick={()=>setModal({type:"editCodingQ",cq})}>Edit</SecBtn>
-                          <OutBtn danger onClick={()=>{if(window.confirm("Remove this coding question?"))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id),codingUnits:(d.codingUnits||[]).map((u:any)=>({...u,codingQuestionIds:(u.codingQuestionIds||[]).filter((id:any)=>id!==cq.id)}))}),{action:`Deleted coding question "${cq.title}"`});}}>Remove</OutBtn>
+                          <OutBtn danger onClick={async()=>{if(await appConfirm("Remove this coding question?",{title:"Remove coding question",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,codingQuestions:(d.codingQuestions||[]).filter((x:any)=>x.id!==cq.id),codingUnits:(d.codingUnits||[]).map((u:any)=>({...u,codingQuestionIds:(u.codingQuestionIds||[]).filter((id:any)=>id!==cq.id)}))}),{action:`Deleted coding question "${cq.title}"`});}}>Remove</OutBtn>
                         </div>}
                       </div>
                     </div>
@@ -1746,10 +1747,10 @@ export default function App(){
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {u.role==="member"&&<SecBtn onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Make officer</SecBtn>}
                   {u.role==="officer"&&!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"member"}:x)}))}>Demote</Btn>}
-                  {u.role==="officer"&&<SecBtn onClick={()=>{if(window.confirm(`Make ${u.name||u.username} a developer? Developers can manage members (including other developers) and have full admin access.`))upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"developer"}:x)}));}}>Make developer</SecBtn>}
+                  {u.role==="officer"&&<SecBtn onClick={async()=>{if(await appConfirm("Developers can manage members, backups, and all site content.",{title:`Make ${u.name||u.username} a developer?`,confirmLabel:"Make developer"}))upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"developer"}:x)}));}}>Make developer</SecBtn>}
                   {u.role==="developer"&&!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<Btn color={C.muted} onClick={()=>upd((d:any)=>({...d,users:d.users.map((x:any)=>x.username===u.username?{...x,role:"officer"}:x)}))}>Demote to officer</Btn>}
                   <SecBtn onClick={()=>{setPasswordResetTarget(u);setReplacementPassword("");setPasswordResetError("");}}>Set password</SecBtn>
-                  {!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<OutBtn danger onClick={()=>{if(window.confirm(`Delete ${u.name||u.username}? This cannot be undone.`))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>}
+                  {!PRIMARY_ADMIN_USERNAMES.has(String(u.username||"").toLowerCase())&&<OutBtn danger onClick={async()=>{if(await appConfirm("This cannot be undone.",{title:`Delete ${u.name||u.username}?`,confirmLabel:"Delete account",danger:true}))upd((d:any)=>({...d,users:d.users.filter((x:any)=>x.username!==u.username)}))}}>Delete</OutBtn>}
                 </div>
               </div>
             ))}
@@ -2275,7 +2276,7 @@ function OfficersPage({data,upd,isDev,user}:any){
                   {t.dueDate&&<div style={{fontSize:11,color:overdue?C.red:C.muted,marginTop:3}}>Due {t.dueDate}{overdue?" — Overdue":""}</div>}
                   {(t.assignees||[]).length>0&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>👤 {t.assignees.join(", ")}</div>}
                 </div>
-                {isDev&&<button onClick={(e:any)=>{e.stopPropagation();if(window.confirm("Remove this task?"))upd((d:any)=>({...d,officerTasks:(d.officerTasks||[]).filter((x:any)=>String(x.id)!==String(t.id))}));}} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0}}>×</button>}
+                {isDev&&<button onClick={async(e:any)=>{e.stopPropagation();if(await appConfirm("Remove this task?",{title:"Remove task",confirmLabel:"Remove",danger:true}))upd((d:any)=>({...d,officerTasks:(d.officerTasks||[]).filter((x:any)=>String(x.id)!==String(t.id))}));}} style={{background:"transparent",border:"none",color:C.red,cursor:"pointer",fontSize:16,lineHeight:1,padding:0}}>×</button>}
               </div>
             );
           })}
@@ -2421,17 +2422,17 @@ function BackupsPanel(){
       a.href=url;a.download=`bridgeland-cs-club-backup-${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }catch(e){console.error(e);window.alert("Export failed — check the console for details.");}
+    }catch(e){console.error(e);await appAlert("The backup could not be exported. Please try again.",{title:"Export failed",danger:true});}
     setExporting(false);
   };
   const doRestore=async(b:any)=>{
-    const typed=window.prompt(`This will replace the ENTIRE live site with the backup from ${new Date(b.createdAt).toLocaleString()}. Anything added or changed since then will be LOST. This cannot be undone.\n\nType RESTORE to confirm.`);
+    const typed=await appPrompt(`This will replace the entire live site with the backup from ${new Date(b.createdAt).toLocaleString()}. Changes made since then will be lost. This cannot be undone.`,{title:"Restore site backup",confirmLabel:"Continue",placeholder:"Type RESTORE",danger:true});
     if(typed!=="RESTORE")return;
     setRestoringId(b.id);
     try{
       await restoreBackup(b.id);
-      window.alert("Restore complete. The site now matches that backup.");
-    }catch(e){console.error(e);window.alert("Restore failed — check the console for details.");}
+      await appAlert("The site now matches that backup.",{title:"Restore complete"});
+    }catch(e){console.error(e);await appAlert("The backup could not be restored. Please try again.",{title:"Restore failed",danger:true});}
     setRestoringId(null);
   };
   return(
@@ -2488,7 +2489,7 @@ function OfficerImgPick({image,onPick}:any){
   return(
     <div style={{marginBottom:8}}>
       <button type="button" onClick={()=>ref.current.click()} style={{background:C.bgInput,border:`1px dashed ${C.border}`,color:C.muted,padding:"5px 10px",borderRadius:6,cursor:"pointer",fontSize:12,width:"100%"}}>{image?"Change photo":"Upload photo"}</button>
-      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){alert(err.message);}}}}/>
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={async(e:any)=>{if(e.target.files[0]){try{onPick(await toB64(e.target.files[0]));}catch(err:any){void appAlert(err.message,{title:"Image upload failed",danger:true});}}}}/>
     </div>
   );
 }
@@ -2921,7 +2922,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
   const result=attempt.submittedAt&&test.answerKey?.length===test.questions?gradeAttempt():null;
   const submit=()=>setShowSubmitConfirm(true);
   const confirmSubmit=()=>{setShowSubmitConfirm(false);finishAttempt();};
-  const reset=()=>{if(window.confirm("Start a new attempt? This replaces the saved answers for this test on this browser.")){submittedRef.current=false;pageVisitRef.current={index:-1,startedAt:Date.now()};saveAttempt(makeAttempt());}};
+  const reset=async()=>{if(await appConfirm("This replaces the saved answers for this test on this browser.",{title:"Start a new attempt?",confirmLabel:"Start new attempt",danger:true})){submittedRef.current=false;pageVisitRef.current={index:-1,startedAt:Date.now()};saveAttempt(makeAttempt());}};
   submitRef.current=submit;resetRef.current=reset;
   useEffect(()=>{
     onStatusChange?.({year:test.year,level:test.level,startedAt:attempt.startedAt,minutes:test.minutes,answered,questions:test.questions,submitted:!!attempt.submittedAt,onBack:()=>backRef.current?.(),submit:()=>submitRef.current?.(),reset:()=>resetRef.current?.()});

@@ -551,6 +551,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .submit-confirm-submit:hover { transform: translateY(-1px); filter: brightness(1.04); }
 .submit-confirm-cancel:focus-visible, .submit-confirm-submit:focus-visible { outline: 3px solid var(--orange-33); outline-offset: 2px; }
 @keyframes submit-confirm-enter { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.app-dialog-backdrop { position: fixed; z-index: 1600; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(12, 24, 36, .56); backdrop-filter: blur(4px); }
+.app-dialog-card { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
+.app-dialog-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--orange-33); border-radius: 12px; color: var(--orange-text); background: var(--orange-18); font-size: 19px; font-weight: 900; }
+.app-dialog-mark.danger { border-color: var(--red-33); color: var(--red); background: var(--red-18); }
+.app-dialog-copy h2 { margin: 1px 0 7px; font-size: clamp(20px, 4vw, 24px); line-height: 1.25; }
+.app-dialog-copy p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.app-dialog-input { width: 100%; box-sizing: border-box; min-height: 42px; margin-top: 14px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface-strong); font: inherit; font-size: 14px; }
+.app-dialog-input:focus { border-color: var(--orange); outline: 3px solid var(--orange-18); }
+.app-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+.app-dialog-cancel, .app-dialog-confirm { min-height: 42px; padding: 10px 16px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.app-dialog-cancel { border: 1px solid var(--line); color: var(--text); background: var(--surface-strong); }
+.app-dialog-confirm { border: 1px solid var(--orange); color: var(--accent-ink); background: var(--orange); }
+.app-dialog-confirm.danger { border-color: var(--red); color: #fff; background: var(--red); }
+.app-dialog-cancel:hover { background: var(--blue-12); }
+.app-dialog-confirm:not(.danger):hover { filter: brightness(1.04); }
+.app-dialog-cancel:focus-visible, .app-dialog-confirm:focus-visible { outline: 3px solid var(--orange-33); outline-offset: 2px; }
 .written-test-entry-copy { min-width: 0; }
 .written-test-eyebrow { color: var(--orange-text); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .written-test-entry h3 { margin: 5px 0 5px; font-size: 21px; }
