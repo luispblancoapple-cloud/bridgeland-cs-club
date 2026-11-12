@@ -3,6 +3,8 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, getDocs, getDoc, query, orderBy, updateDoc, deleteDoc, arrayUnion, limit } from "firebase/firestore";
 import { FIRST_15_TIPS, UIL_TESTS, UIL_TOPIC_UNITS } from "./uilPrepData";
+import WrittenTestRunner from "./WrittenTestRunner";
+import { UIL_WRITTEN_TESTS } from "./uilWrittenPractice";
 import UIL_PAPER_MAP from "./uilPaperMap.json";
 
 
@@ -72,6 +74,12 @@ function showOnFirstVisit(key:string):boolean{
     localStorage.setItem(key,"1");
     return true;
   }catch{return true;}
+}
+function hasCompletedWrittenTest(username:string,testId:string):boolean{
+  try{
+    const attempt=JSON.parse(localStorage.getItem(`bridgeland-cs-club:written-test:${username}:${testId}`)||"null");
+    return !!attempt?.submittedAt;
+  }catch{return false;}
 }
 const DEV_ACCOUNT: any = { username:"LuisBlanco62",passwordHash:"d76b58cc21175bccfb07399a4531e3a0141dce781c16f4e96ed05e29c5452d5f",role:"developer",name:"Luis Blanco" };
 const GUEST_USER: any = { username:"__guest__",name:"Guest",role:"guest" };
@@ -582,8 +590,8 @@ const Btn=({color=C.orange,children,onClick,style={},disabled}:any)=>(
 const OutBtn=({children,onClick,style={},danger}:any)=>(
   <button onClick={onClick} style={{background:"transparent",color:danger?C.red:C.muted,border:`1px solid ${danger?C.red:C.border}`,padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:13,...style}}>{children}</button>
 );
-const SecBtn=({children,onClick,style={}}:any)=>(
-  <button onClick={onClick} style={{background:C.bgInput,color:C.text,border:`1px solid ${C.border}`,padding:"8px 16px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,...style}}>{children}</button>
+const SecBtn=({children,onClick,style={},...props}:any)=>(
+  <button {...props} onClick={onClick} style={{background:C.bgInput,color:C.text,border:`1px solid ${C.border}`,padding:"8px 16px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,...style}}>{children}</button>
 );
 const Tag=({c,children}:any)=><span style={{background:`color-mix(in srgb, ${c} 16%, transparent)`,color:c===C.orange?C.orangeText:c,fontSize:11,padding:"4px 9px",borderRadius:7,fontWeight:700}}>{children}</span>;
 
@@ -693,8 +701,8 @@ function UILExamHeader({status}:any){
   const clock=`${Math.floor(remaining/60).toString().padStart(2,"0")}:${(remaining%60).toString().padStart(2,"0")}`;
   return <header className="uil-exam-header">
     <div className="uil-exam-heading">
-      <button type="button" className="uil-exit-test" onClick={status?.onBack}>← All UIL tests</button>
-      <div><strong>{status?`${status.year} · ${status.level}`:"Starting UIL test…"}</strong><span>{status?.submitted?"Your submitted test diagnostics are below.":"Tap a bubble to answer; type in written responses."}</span></div>
+      <button type="button" className="uil-exit-test" onClick={status?.onBack}>{status?.isTopicPractice?"← Back to Written Test Problems":"← All UIL tests"}</button>
+      <div><strong>{status?`${status.year} · ${status.level}`:"Starting UIL test…"}</strong><span>{status?.submitted?"Your submitted test diagnostics are below.":status?.isTopicPractice?"Select an answer, move between questions, and submit when ready.":"Tap a bubble to answer; type in written responses."}</span></div>
     </div>
     <div className="uil-exam-status">
       <span className={`uil-exam-clock${remaining<300?" urgent":""}`}>{status?.submitted?"Submitted":`Time ${clock}`}</span>
@@ -1059,6 +1067,8 @@ export default function App(){
   const [page,setPage]=useState("home");
   const [uilExamActive,setUilExamActive]=useState(false);
   const [uilExamStatus,setUilExamStatus]=useState<any>(null);
+  const [activeWrittenTest,setActiveWrittenTest]=useState<string|null>(null);
+  const [problemTab,setProblemTab]=useState<"programming"|"written">("programming");
   const [theme,setTheme]=useState<"light"|"dark">(()=>{
     try{return localStorage.getItem("bridgeland-cs-club-theme")==="dark"?"dark":"light";}catch{return "light";}
   });
@@ -1188,7 +1198,7 @@ export default function App(){
   const allNav=["about","announcements","events","resources","uilPrep","problems","coding","leaderboard","forum"];
   const navItems=isOfficer?[...allNav,"officers"]:allNav;
   const navLabels:any={home:"Home",about:"About Us",announcements:"Announcements",events:"Events",resources:"Resources",uilPrep:"UIL Prep",problems:"Problems",coding:"Coding",leaderboard:"Leaderboard",forum:"Forum",officers:"Officers"};
-  const clearActiveView=()=>{setActiveCoding(null);setActiveCodingUnit(null);setActiveProblem(null);setActiveUnit(null);};
+  const clearActiveView=()=>{setActiveCoding(null);setActiveCodingUnit(null);setActiveProblem(null);setActiveUnit(null);setActiveWrittenTest(null);};
   const goHome=()=>{setPage("home");clearActiveView();};
   const navigateTo=(nextPage:string)=>{setPage(nextPage);clearActiveView();};
   const headerProps={user,onSignOut:()=>{setUser(null);setPage("home");clearActiveView();},isDev,onManage:()=>navigateTo("members"),page,navItems,navLabels,onNavigate:navigateTo,onHome:goHome,theme,onToggleTheme:()=>setTheme(t=>t==="light"?"dark":"light")};
@@ -1468,20 +1478,50 @@ export default function App(){
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
               <h2 style={{margin:0}}>Problems</h2>
-              {isOfficer&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
-                <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
-                <OutBtn onClick={()=>setModal("importCsv")}>Import from Google Sheets</OutBtn>
+              {!activeWrittenTest&&<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <div role="tablist" aria-label="Problem type" style={{display:"flex",gap:6}}>
+                  {([ ["programming","Programming"], ["written","Written"] ] as const).map(([tab,label])=><SecBtn key={tab} id={`${tab}-problems-tab`} role="tab" aria-controls={`${tab}-problems-panel`} aria-selected={problemTab===tab} onClick={()=>setProblemTab(tab)} style={{background:problemTab===tab?C.orange18:C.bgInput,color:problemTab===tab?C.orangeText:C.muted,borderColor:problemTab===tab?C.orange:C.border,fontWeight:700}}>{label}</SecBtn>)}
+                </div>
+                {isOfficer&&problemTab==="programming"&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <SecBtn onClick={()=>setModal("prob")}>+ New problem</SecBtn>
+                  <Btn onClick={()=>setModal("unit")}>+ New unit</Btn>
+                  <OutBtn onClick={()=>setModal("importCsv")}>Import from Google Sheets</OutBtn>
+                </div>}
               </div>}
             </div>
-            {isGuest?(
+            {activeWrittenTest?(
+              <WrittenTestRunner
+                username={user.username}
+                test={UIL_WRITTEN_TESTS.find((test:any)=>test.id===activeWrittenTest)!}
+                onBack={()=>{setActiveWrittenTest(null);setUilExamStatus(null);}}
+                onStatusChange={setUilExamStatus}
+                onExamModeChange={setUilExamActive}
+              />
+            ):isGuest?(
               <div style={{...cardS,borderLeft:`3px solid ${C.guest}`,textAlign:"center",padding:"2rem"}}>
                 <div style={{fontSize:32,marginBottom:12}}>🔒</div>
                 <div style={{fontWeight:600,fontSize:16,marginBottom:8}}>Sign in to practice</div>
                 <div style={{fontSize:14,color:C.muted}}>Create a free account to access all practice problems, track your progress, and appear on the leaderboard.</div>
               </div>
+            ):problemTab==="written"?(
+              <div className="written-test-landing" id="written-problems-panel" role="tabpanel" aria-labelledby="written-problems-tab">
+                <div className="written-test-landing-intro">
+                  <div><div className="written-test-eyebrow">Topic practice</div><h3>Written Test</h3></div>
+                  <p>Choose a topic set. Each practice test has 10 questions pulled from UIL packets and a 12-minute timer.</p>
+                </div>
+                <div className="written-test-card-grid">
+                  {UIL_WRITTEN_TESTS.map((test:any)=>{
+                    const completed=hasCompletedWrittenTest(user.username,test.id);
+                    return <article key={test.id} className="written-test-topic-card">
+                    <div className="written-test-topic-card-heading"><div><h4>{test.title}</h4><span>10 questions · 12 minutes</span></div></div>
+                    <p>{test.description}</p>
+                    <Btn onClick={()=>setActiveWrittenTest(test.id)}>{completed?"Retake topic questions →":"Practice topic questions →"}</Btn>
+                  </article>})}
+                </div>
+                <p className="written-test-source">Questions are selected from UIL District, Region, and State packets from 2022–2026.</p>
+              </div>
             ):(
-              <>
+              <div id="programming-problems-panel" role="tabpanel" aria-labelledby="programming-problems-tab">
                 <input style={{...inp,marginBottom:16}} value={problemSearch} onChange={(e:any)=>setProblemSearch(e.target.value)} placeholder="🔍 Search units and problems by title..."/>
                 {!problemSearch&&<>
                   {showUnitsHint&&<div style={{background:C.orange18,borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,color:C.orangeText}}>Units group problems together. Start a unit to go through them back-to-back.</div>}
@@ -1536,7 +1576,7 @@ export default function App(){
                     );
                   })}
                 {problemSearch&&(data.problems||[]).filter((p:any)=>p.title.toLowerCase().includes(problemSearch.toLowerCase())||p.desc.toLowerCase().includes(problemSearch.toLowerCase())).length===0&&<p style={{color:C.muted,fontSize:13}}>No problems match "{problemSearch}".</p>}
-              </>
+              </div>
             )}
           </div>
         )}
