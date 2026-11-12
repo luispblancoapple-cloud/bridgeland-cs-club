@@ -26,7 +26,7 @@ export default function SubmissionConfirmDialog({ answered, total, topicPractice
           : `You’ve answered all ${total} questions.`} Your answers will be locked and your results will appear after submission.</p>
       </div>
       <div className="submit-confirm-actions">
-        <button type="button" autoFocus className="submit-confirm-cancel" onClick={onCancel}>Keep practicing</button>
+        <button type="button" autoFocus className="submit-confirm-cancel" onClick={onCancel}>Return to test</button>
         <button type="button" className="submit-confirm-submit" onClick={onConfirm}>{topicPractice ? "Submit topic set" : "Submit test"}</button>
       </div>
     </section>

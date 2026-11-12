@@ -131,6 +131,7 @@ export default function WrittenTestRunner({ username, test, onBack, onStatusChan
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [attempt.submittedAt]);
+  useEffect(() => { if (attempt.submittedAt) window.scrollTo(0, 0); }, [attempt.submittedAt]);
   useEffect(() => {
     if (remaining === 0 && !attempt.submittedAt) finish();
   }, [remaining, attempt.submittedAt]);

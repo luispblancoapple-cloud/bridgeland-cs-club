@@ -5,6 +5,7 @@
   --canvas: #f7fafc;
   --surface: rgba(255, 255, 255, .72);
   --surface-strong: rgba(255, 255, 255, .9);
+  --dialog-surface: #fff;
   --line: rgba(117, 153, 176, .22);
   --navy: #193c5a;
   --orange: #f4a261;
@@ -56,6 +57,7 @@
   --canvas: #0b1220;
   --surface: rgba(255, 255, 255, .075);
   --surface-strong: rgba(255, 255, 255, .105);
+  --dialog-surface: #111b2d;
   --line: rgba(210, 226, 240, .15);
   --navy: #0b1220;
   --orange: #f4a261;
@@ -539,7 +541,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .account-recovery-notice button { flex: 0 0 auto; padding: 0 2px; border: 0; color: inherit; background: transparent; font-size: 21px; line-height: 1; cursor: pointer; }
 .account-recovery-notice button:focus-visible { outline: 2px solid var(--green-33); outline-offset: 3px; border-radius: 4px; }
 .submit-confirm-backdrop { position: fixed; z-index: 1500; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(12, 24, 36, .56); backdrop-filter: blur(4px); }
-.submit-confirm-dialog { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
+.submit-confirm-dialog { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--dialog-surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
 .submit-confirm-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--orange-33); border-radius: 13px; color: var(--orange-text); background: var(--orange-18); font-size: 20px; font-weight: 900; }
 .submit-confirm-copy h2 { margin: 1px 0 7px; font-size: clamp(20px, 4vw, 24px); line-height: 1.25; }
 .submit-confirm-copy p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
@@ -552,7 +554,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .submit-confirm-cancel:focus-visible, .submit-confirm-submit:focus-visible { outline: 3px solid var(--orange-33); outline-offset: 2px; }
 @keyframes submit-confirm-enter { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .app-dialog-backdrop { position: fixed; z-index: 1600; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(12, 24, 36, .56); backdrop-filter: blur(4px); }
-.app-dialog-card { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
+.app-dialog-card { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 8px 14px; width: min(100%, 500px); padding: clamp(20px, 4vw, 28px); border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: var(--dialog-surface); box-shadow: 0 24px 80px rgba(0, 0, 0, .28); animation: submit-confirm-enter .16s ease-out; }
 .app-dialog-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--orange-33); border-radius: 12px; color: var(--orange-text); background: var(--orange-18); font-size: 19px; font-weight: 900; }
 .app-dialog-mark.danger { border-color: var(--red-33); color: var(--red); background: var(--red-18); }
 .app-dialog-copy h2 { margin: 1px 0 7px; font-size: clamp(20px, 4vw, 24px); line-height: 1.25; }

@@ -642,7 +642,7 @@ function NotificationBell({user}:any){
       {open&&(
         <>
           <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>setOpen(false)}/>
-          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:400,overflowY:"auto",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:14,boxShadow:"var(--shadow)",zIndex:999}}>
+          <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:400,overflowY:"auto",background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:14,boxShadow:"var(--shadow)",zIndex:999}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${C.border}`}}>
               <span style={{fontWeight:700,fontSize:13,color:C.text}}>Notifications</span>
               {unread.length>0&&<button onClick={markAllRead} style={{background:"transparent",border:"none",color:C.orangeText,fontSize:11,cursor:"pointer",fontWeight:600}}>Mark all read</button>}
@@ -1004,7 +1004,7 @@ function BugReportBtn({user}:any){
       </button>
       {open&&(
         <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={()=>setOpen(false)}>
-          <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
+          <div style={{background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440}} onClick={(e:any)=>e.stopPropagation()}>
             <h3 style={{margin:"0 0 8px",fontSize:16}}>Report a Bug</h3>
             <p style={{color:C.muted,fontSize:13,margin:"0 0 12px"}}>Describe what went wrong and we'll look into it.</p>
             {sent?(
@@ -1755,7 +1755,7 @@ export default function App(){
               </div>
             ))}
             {passwordResetTarget&&<div role="presentation" style={{position:"fixed",inset:0,zIndex:1000,display:"grid",placeItems:"center",padding:20,background:"rgba(12,24,36,.55)"}}>
-              <section role="dialog" aria-modal="true" aria-labelledby="set-password-title" style={{width:"min(100%,440px)",padding:24,border:`1px solid ${C.border}`,borderRadius:16,background:C.bgCard,boxShadow:"0 24px 80px rgba(0,0,0,.25)"}}>
+              <section role="dialog" aria-modal="true" aria-labelledby="set-password-title" style={{width:"min(100%,440px)",padding:24,border:`1px solid ${C.border}`,borderRadius:16,background:"var(--dialog-surface)",boxShadow:"0 24px 80px rgba(0,0,0,.25)"}}>
                 <h3 id="set-password-title" style={{margin:"0 0 8px",fontSize:21}}>Set a new password</h3>
                 <p style={{margin:"0 0 14px",color:C.muted,fontSize:13,lineHeight:1.5}}>For @{passwordResetTarget.username}. The password will be saved as a hash and cannot be viewed later. Share it with the account holder directly.</p>
                 <input autoFocus type="password" autoComplete="new-password" value={replacementPassword} onChange={(event:any)=>{setReplacementPassword(event.target.value);setPasswordResetError("");}} onKeyDown={(event:any)=>{if(event.key==="Enter")void setMemberPassword();if(event.key==="Escape")setPasswordResetTarget(null);}} aria-label="New password" placeholder="New password (8+ characters)" style={{...inp,marginBottom:passwordResetError?8:14}} />
@@ -2253,7 +2253,7 @@ function OfficersPage({data,upd,isDev,user}:any){
   };
   const toggleAssignee=(name:string)=>setTaskForm((f:any)=>({...f,assignees:f.assignees.includes(name)?f.assignees.filter((a:string)=>a!==name):[...f.assignees,name]}));
   const overlay:any={position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440,maxHeight:"88vh",overflowY:"auto"};
+  const box:any={background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:440,maxHeight:"88vh",overflowY:"auto"};
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
@@ -2834,6 +2834,7 @@ function UILTestRunner({test,username,onBack,onStatusChange}:any){
     const timer=window.setInterval(()=>setNow(Date.now()),1000);
     return()=>window.clearInterval(timer);
   },[attempt.submittedAt]);
+  useEffect(()=>{if(attempt.submittedAt)window.scrollTo(0,0);},[attempt.submittedAt]);
   useEffect(()=>{
     let active=true,task:any=null;
     import("pdfjs-dist").then(async(pdfjsLib:any)=>{
@@ -3209,7 +3210,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     const saveEdit=()=>{upd((d:any)=>({...d,units:d.units.map((u:any)=>u.id===editUnit.id?{...u,problemIds:selProbs}:u)}));close();};
     return(
       <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+        <div style={{background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit problems</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editUnit.title}</p>
           <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
@@ -3232,7 +3233,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     const saveEdit=()=>{upd((d:any)=>({...d,codingUnits:d.codingUnits.map((u:any)=>u.id===editCodingUnit.id?{...u,codingQuestionIds:selCodingQs}:u)}));close();};
     return(
       <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+        <div style={{background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:480,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 4px",fontSize:16}}>Edit unit questions</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 14px"}}>{editCodingUnit.title}</p>
           <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:8,padding:8,marginBottom:14}}>
@@ -3312,7 +3313,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     };
     return(
       <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:520,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+        <div style={{background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:520,maxHeight:"88vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 8px",fontSize:16}}>Import from Google Sheets</h3>
           <p style={{color:C.muted,fontSize:13,margin:"0 0 12px",lineHeight:1.5}}>
             In your sheet: <strong>File → Share → Publish to web</strong>, choose the sheet, pick <strong>CSV</strong>, and paste the link below.
@@ -3357,7 +3358,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
     };
     return(
       <div style={{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}} onClick={close}>
-        <div style={{background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:580,maxHeight:"90vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
+        <div style={{background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:580,maxHeight:"90vh",overflowY:"auto"}} onClick={(e:any)=>e.stopPropagation()}>
           <h3 style={{margin:"0 0 16px",fontSize:16}}>{isEditCodingQ?"Edit Coding Question":"New Coding Question"}</h3>
           {cqErr&&<div style={{background:C.red18,border:`1px solid ${C.red44}`,borderRadius:6,padding:"8px 12px",fontSize:13,color:C.red,marginBottom:12}}>⚠ {cqErr}</div>}
           <label style={lbl}>Title <span style={{color:C.red}}>*</span></label>
@@ -3452,7 +3453,7 @@ function ModalBox({modal,setModal,data,upd,isDev}:any){
   const modalKey=typeof modal==="string"?modal:modal?.type;
   const modalTitle=isEditProb?"Edit Problem":(titles[modalKey]||"Add");
   const overlay:any={position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000};
-  const box:any={background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","codingUnit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
+  const box:any={background:"var(--dialog-surface)",border:`1px solid ${C.border}`,borderRadius:12,padding:"1.5rem",width:"90%",maxWidth:["prob","unit","codingUnit","evt"].includes(modalKey)?520:430,maxHeight:"88vh",overflowY:"auto"};
 
   return(
     <div style={overlay} onClick={close}>
