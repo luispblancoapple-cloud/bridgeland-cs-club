@@ -1088,6 +1088,7 @@ export default function App(){
   const [passwordResetTarget,setPasswordResetTarget]=useState<any>(null);
   const [replacementPassword,setReplacementPassword]=useState("");
   const [passwordResetError,setPasswordResetError]=useState("");
+  const [passwordResetNotice,setPasswordResetNotice]=useState("");
   const [activeProblem,setActiveProblem]=useState<any>(null);
   const [activeUnit,setActiveUnit]=useState<any>(null);
   const [activeCodingUnit,setActiveCodingUnit]=useState<any>(null);
@@ -1216,7 +1217,7 @@ export default function App(){
     setPasswordResetTarget(null);
     setReplacementPassword("");
     setPasswordResetError("");
-    window.alert(`A new password was set for @${member.username}. Share it directly with them; it cannot be viewed again.`);
+    setPasswordResetNotice(`A new password was set for @${member.username}. Share it directly with them; it cannot be viewed again.`);
   };
   const register=async()=>{
     const uname=regForm.username.trim();
@@ -1733,6 +1734,7 @@ export default function App(){
           <div>
             <h2>Manage Members</h2>
             <p style={{color:C.muted,fontSize:13,margin:"-6px 0 14px"}}>Passwords are stored as hashes and cannot be viewed. Set a new password to help a member recover an account.</p>
+            {passwordResetNotice&&<div className="account-recovery-notice" role="status" aria-live="polite"><span>{passwordResetNotice}</span><button type="button" aria-label="Dismiss password update message" onClick={()=>setPasswordResetNotice("")}>×</button></div>}
             {[...(data.users||[]),...((data.users||[]).some((u:any)=>u.username===DEV_ACCOUNT.username)?[]:[DEV_ACCOUNT])].map((u:any)=>(
               <div key={u.username} style={{...cardS,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
